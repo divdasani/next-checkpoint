@@ -141,9 +141,28 @@ Three safety nets keep a mistake from shipping.
 
 Never copy the original resume files or the reference images into `public/`.
 
+## Deploy on Netlify
+
+The production site is [annika-next-checkpoint.netlify.app](https://annika-next-checkpoint.netlify.app). Its source repository is [divdasani/next-checkpoint](https://github.com/divdasani/next-checkpoint), and the [Netlify project](https://app.netlify.com/projects/annika-next-checkpoint) is connected to the `main` branch.
+
+Pushing a commit to `main` automatically starts a Netlify build. A successful build publishes the new version at the same address. Saving a local file alone does not update the public site.
+
+| Setting | Value |
+| --- | --- |
+| Production branch | `main` |
+| Base directory | Empty: the repository is the application |
+| Build command | `npm run build` |
+| Publish directory | `dist` |
+| Node.js | 24, from `.nvmrc` |
+| Environment variables | None |
+
+`netlify.toml` keeps the build command, publish directory, and response headers in Git. Netlify has a read-only repository deploy key and a GitHub webhook for automatic builds. Local Netlify CLI state is ignored in `.netlify/`.
+
+Before publishing an edit, run `npm run check`, review the changes, commit the intended files, and push to `main`. Follow the build under **Deploys** in the Netlify project. If it fails, inspect that deploy's build log, fix the problem, and push the correction.
+
 ## Deploy on Vercel
 
-Nothing has been deployed. These are instructions only.
+These instructions are an optional alternative to the configured Netlify hosting.
 
 ### Keep the original resume out
 
@@ -376,7 +395,7 @@ An independent review measured these on the production build. They were not repe
 - Safari, Firefox, and any browser other than Chrome on a Mac. Windows and Android.
 - A real phone or tablet. Touch was emulated in desktop Chrome.
 - A real screen reader. Names, roles, and announcements were checked in the page structure only.
-- A deployment. Nothing has been deployed, so the Vercel settings and the response headers in `vercel.json` are untested.
+- A Vercel deployment. The optional Vercel settings and response headers in `vercel.json` are untested.
 - Node 22, a real printer, and a real screen recording. Film mode was checked from timed screenshots, not from a recorded video.
 - Frame rate on slow devices.
 
