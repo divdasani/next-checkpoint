@@ -1,0 +1,19 @@
+# Netlify settings. Netlify reads this file on every build of the site.
+# The Node.js version comes from the .nvmrc file (24).
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Files under /assets/ carry a content hash in their names, so a changed file always gets
+# a new name. That makes it safe for browsers to keep them for a year.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
