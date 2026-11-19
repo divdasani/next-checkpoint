@@ -143,7 +143,7 @@ Never copy the original resume files or the reference images into `public/`.
 
 ## Deploy on Netlify
 
-The production site is [annika-next-checkpoint.netlify.app](https://annika-next-checkpoint.netlify.app). Its source repository is [divdasani/next-checkpoint](https://github.com/divdasani/next-checkpoint), and the [Netlify project](https://app.netlify.com/projects/annika-next-checkpoint) is connected to the `main` branch.
+The production site is [annikadasani.netlify.app](https://annikadasani.netlify.app). Its source repository is [divdasani/next-checkpoint](https://github.com/divdasani/next-checkpoint), and the [Netlify project](https://app.netlify.com/projects/annikadasani) is connected to the `main` branch.
 
 Pushing a commit to `main` automatically starts a Netlify build. A successful build publishes the new version at the same address. Saving a local file alone does not update the public site.
 
