@@ -1,0 +1,331 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Stage layout. Three layers fill the screen, back to front: the 3D world, the
+   destination pins, and the interface (the HUD).
+
+   The HUD is a grid with one cell left empty on purpose (.stage-cell). Inside it,
+   .stage-safe marks the part of the screen that no panel covers. The camera centers
+   the island in that rectangle (world/CameraRig.tsx measures the element), so its
+   size must never depend on what a panel happens to contain. That is why the panel
+   is a fixed-width column on wide screens and a fixed-height sheet on tall ones.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Height of the bottom sheet on tall screens. It depends only on the size of the
+     window, never on what the panel contains, so the camera does not jump.
+
+     The island is about 1.3 times wider than it is tall. A stage taller than 77% of the
+     screen width would only add empty sky, so the sheet takes that spare height
+     (100vh - 77vw - 10rem, where 10rem is roughly the top bar plus the chips). It never
+     goes below 40% of the screen (22rem on tablets) or above 52% (26rem). */
+  --sheet-height: clamp(min(40vh, 22rem), calc(100vh - 77vw - 10rem), min(52vh, 26rem));
+  /* Room around the scrolling panel so its hard shadow and focus outlines are never cut off. */
+  --panel-bleed: 0.5rem;
+  /* How far a destination pin reaches above its anchor point: a small round marker on
+     phones, a taller label with a pointer tail on larger screens (see the pins in hud.css,
+     which use the same breakpoint). */
+  --pin-reach: 1.875rem;
+}
+
+@media (min-width: 480px) and (min-height: 480px) {
+  :root {
+    --pin-reach: 2.375rem;
+  }
+}
+
+/* dvh follows a phone browser's address bar as it slides away. vh above is the fallback. */
+@supports (height: 1dvh) {
+  :root {
+    --sheet-height: clamp(min(40dvh, 22rem), calc(100dvh - 77vw - 10rem), min(52dvh, 26rem));
+  }
+}
+
+.app-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.world-layer,
+.pin-layer,
+.hud {
+  position: absolute;
+  inset: 0;
+}
+
+/* Clicks fall through the empty parts of both overlays to the 3D world underneath.
+   Buttons and cards switch pointer events back on for themselves. */
+.pin-layer,
+.hud {
+  pointer-events: none;
+}
+
+/* Pins are only drawn over the stage. When the camera zooms in on a mission, the other
+   pins can land beside the panel or over the footer. This cuts the layer off where the
+   panel and the footer begin (App.tsx measures the stage and sets the two variables). */
+.pin-layer {
+  clip-path: inset(
+    0 max(0px, calc(var(--stage-right, 0px) - var(--gap))) max(0px, calc(var(--stage-bottom, 0px) - var(--gap))) 0
+  );
+}
+
+/* ── Wide screens: panel column on the right ──────────────────────────────── */
+
+.hud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--panel-width);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'top top'
+    'safe panel'
+    'foot panel';
+  gap: var(--gap);
+  /* Keep clear of phone notches and home indicators. */
+  padding: max(var(--edge), env(safe-area-inset-top)) max(var(--edge), env(safe-area-inset-right))
+    max(var(--edge), env(safe-area-inset-bottom)) max(var(--edge), env(safe-area-inset-left));
+}
+
+.hud__top {
+  grid-area: top;
+  min-width: 0;
+}
+
+/* The empty grid cell between the top bar, the footer, and the panel. */
+.stage-cell {
+  grid-area: safe;
+  position: relative;
+  container: stage / size;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The free rectangle the camera centers the island in. It only holds things that belong
+   over the world itself: the Film mode tap layer and the notice shown without WebGL.
+
+   It is the grid cell minus some headroom at the top. The label above the tallest
+   building (the Launch Arch, at the top corner of the island) reaches --pin-reach above
+   its anchor, and the camera puts that anchor about 8% of the stage height below the top
+   edge. On a tall stage the label fits and the headroom is zero. On a short stage (a
+   phone) this pushes the island down just enough to keep the label off the top bar.
+   "cqh" is one percent of the cell's height. */
+.stage-safe {
+  position: absolute;
+  inset: 0;
+  top: max(0px, calc((var(--pin-reach) + 0.25rem - var(--gap) - 8cqh) / 0.92));
+  display: grid;
+  place-items: center;
+}
+
+.hud__foot {
+  grid-area: foot;
+  position: relative;
+  min-width: 0;
+}
+
+/* The panel scrolls inside this box when it is taller than the screen allows.
+   A scrolling box clips whatever sticks out of it, so it is made larger than its grid
+   cell by --panel-bleed on every side (negative margin) and padded back by the same
+   amount. The card keeps its place and its shadow has room. */
+.stage-panel {
+  grid-area: panel;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  max-height: calc(100% + 2 * var(--panel-bleed));
+  margin: calc(-1 * var(--panel-bleed));
+  padding: var(--panel-bleed);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  pointer-events: auto;
+}
+
+.stage-panel__slot {
+  display: grid;
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+/* The panels animate themselves in. Skip the wrapper's own animation then, so the
+   entrance does not play twice on top of itself. */
+.stage-panel__slot:has(> .enter) {
+  animation: none;
+}
+
+/* A landscape window narrower than 960px still gets the side column, only slimmer. */
+@media (max-width: 959px) {
+  :root {
+    --panel-width: clamp(20rem, 40vw, 24rem);
+  }
+}
+
+/* ── Tall or very narrow screens: panel as a bottom sheet ─────────────────────
+   Top bar, then the free stage, then the footer row, then the sheet.
+   hud.css repeats this media query for the pieces that change with it. */
+
+@media (max-aspect-ratio: 1 / 1), (max-width: 559px) {
+  .hud {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto var(--sheet-height);
+    grid-template-areas:
+      'top'
+      'safe'
+      'foot'
+      'panel';
+  }
+
+  /* On tablets the sheet and the footer share one centered column, so text lines stay readable. */
+  .hud__foot {
+    justify-self: center;
+    width: min(100%, 36rem);
+  }
+
+  /* The sheet always fills its fixed row, whatever the panel contains. */
+  .stage-panel {
+    align-self: stretch;
+    justify-self: center;
+    width: min(100% + 2 * var(--panel-bleed), 36rem + 2 * var(--panel-bleed));
+    max-height: none;
+  }
+}
+
+/* Reading moments on a short phone. A Real experience card and the finale are what the site
+   exists for, and a short sheet cannot show them whole. While one of them is up in play
+   mode, the sheet takes over the row of mission chips above it and grows to fit its text:
+   the card repeats what the chips say, and the finale has its own buttons for the three
+   missions. The stage gives up that height and the camera eases the island smaller (see
+   world/CameraRig.tsx), but 13.5rem always stays free for the top bar and the island, and
+   the credit keeps its place above the sheet. This is the one case where the stage depends
+   on what a panel contains. The Guided tour keeps the row, because its controls live there. */
+@media (max-aspect-ratio: 1 / 1) and (max-height: 760px), (max-width: 559px) and (max-height: 760px) {
+  .app-shell[data-mode='play']:is([data-panel='card'], [data-panel='finale']) .stage-panel {
+    grid-row: foot-start / panel-end;
+    position: relative;
+    z-index: 1;
+    max-height: calc(100vh - 13.5rem);
+  }
+
+  @supports (height: 1dvh) {
+    .app-shell[data-mode='play']:is([data-panel='card'], [data-panel='finale']) .stage-panel {
+      max-height: calc(100dvh - 13.5rem);
+    }
+  }
+
+  /* Hidden chips leave the Tab order too, so focus never lands behind the sheet. */
+  .app-shell[data-mode='play']:is([data-panel='card'], [data-panel='finale']) .chips {
+    visibility: hidden;
+  }
+}
+
+/* ── Film mode ────────────────────────────────────────────────────────────────
+   Any element marked "film-hide" is optional help that a screen recording does not
+   need. The class is used by the top bar and by the panels. */
+
+.app-shell[data-mode='film'] .film-hide {
+  display: none !important;
+}
+
+/* ── Large landscape windows (for example a 1920 by 1080 recording) ────────────
+   Type and the panel column grow gently, up to 1.25 times, so the interface keeps
+   the proportions it has at 1440 by 900 instead of shrinking into the corners. */
+
+@media (min-width: 1441px) and (min-height: 901px) and (min-aspect-ratio: 1001 / 1000) {
+  :root {
+    font-size: clamp(100%, min(1.1111vw, 1.7778vh), 125%);
+    --panel-width: 24rem;
+    --edge: 1.25rem;
+    --gap: 0.75rem;
+    --tap: 2.75rem;
+  }
+}
+
+/* Film mode in a landscape window, once a take is on screen. A 16:9 recording is watched
+   much smaller than it was recorded, so the type and the panel column follow the height of
+   the frame: about 1.3 times larger at 1920 by 1080, which makes the capital letters of a
+   card's statement a little over 2% of the frame height. The slate before the take keeps
+   its normal size. The shared pixel sizes are restated in rem so they scale along. */
+@media (min-aspect-ratio: 1001 / 1000) {
+  :root:has(.app-shell[data-mode='film']:not([data-tour='ready'])) {
+    font-size: clamp(100%, 2.33vh, 225%);
+    --panel-width: 24rem;
+    --edge: 1.25rem;
+    --gap: 0.75rem;
+    --tap: 2.75rem;
+    --radius-l: 1.125rem;
+    --radius-m: 0.75rem;
+    --radius-s: 0.5rem;
+    --line: 0.125rem solid var(--ink);
+    --lift: 0.25rem 0.25rem 0 var(--ink);
+    --lift-s: 0.125rem 0.125rem 0 var(--ink);
+  }
+
+  .app-shell[data-mode='film']:not([data-tour='ready']) .btn {
+    gap: 0.5rem;
+    padding: 0.5625rem 1.125rem;
+  }
+
+  .app-shell[data-mode='film']:not([data-tour='ready']) .card {
+    padding: 1.25rem;
+  }
+}
+
+/* ── Tall windows (taller than 3:2): the phone layout, able to scale ────────────
+   A 9:16 recording of this site is usually watched on a phone, whatever size the
+   window was when it was recorded. So in two cases the phone layout is scaled as a
+   whole by changing the root font size (the stylesheets use rem for that reason).
+
+   To make everything follow, the shared pixel sizes from tokens.css and base.css are
+   restated here in rem. At the normal root size of 16px they come out exactly the same. */
+
+@media (max-aspect-ratio: 2 / 3) {
+  :root {
+    --edge: 0.75rem;
+    --gap: 0.625rem;
+    --tap: 2.75rem;
+    --radius-l: 1.125rem;
+    --radius-m: 0.75rem;
+    --radius-s: 0.5rem;
+    --line: 0.125rem solid var(--ink);
+    --lift: 0.25rem 0.25rem 0 var(--ink);
+    --lift-s: 0.125rem 0.125rem 0 var(--ink);
+  }
+
+  .btn {
+    gap: 0.5rem;
+    padding: 0.5625rem 1.125rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+  }
+
+  :focus-visible {
+    outline-width: max(0.1875rem, 3px);
+    outline-offset: max(0.1875rem, 3px);
+  }
+}
+
+/* Case 1: a tall window at least 600px wide (for example 1080 by 1920) has many more
+   pixels than a phone. The root grows with the width, up to 2.25 times. */
+@media (min-width: 600px) and (max-aspect-ratio: 2 / 3) {
+  :root {
+    font-size: clamp(100%, calc(100% + (100vw - 600px) * 0.0375), 225%);
+  }
+}
+
+/* Case 2: Film mode, once a take is on screen. The root follows the height of the window,
+   so every tall frame shows the same composition as 1080 by 1920 and the Real experience
+   cards always fit, whether the take is recorded at 1080 by 1920, in a 450 by 800 window,
+   or on a phone. The slate before the take keeps its normal size. */
+@media (max-aspect-ratio: 2 / 3) {
+  :root:has(.app-shell[data-mode='film']:not([data-tour='ready'])) {
+    font-size: min(1.7708vh, 4.1vw);
+  }
+
+  @supports (height: 1dvh) {
+    :root:has(.app-shell[data-mode='film']:not([data-tour='ready'])) {
+      font-size: min(1.7708dvh, 4.1vw);
+    }
+  }
+}

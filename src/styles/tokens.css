@@ -1,0 +1,86 @@
+/* Design tokens. The accent colors match PALETTE in src/world/layout.ts. */
+
+/* The one typeface: Nunito, a rounded sans-serif under the SIL Open Font License (see
+   src/assets/fonts/OFL.txt). It ships with the site, as one variable file covering every
+   weight, so the interface looks the same on every device instead of falling back to
+   whatever each system has installed. */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url('../assets/fonts/nunito-latin-variable.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: light;
+
+  /* Sky behind the island */
+  --sky-top: #86cfff;
+  --sky-bottom: #cdeeff;
+
+  /* Text and surfaces */
+  --ink: #14213d;
+  --ink-soft: #3d4c6b;
+  --ink-faint: #56637d;
+  --paper: #ffffff;
+  --paper-tint: #f2f7fd;
+
+  /* Accents */
+  --green: #3ec46d;
+  --green-soft: #d8f6e2;
+  --yellow: #ffc233;
+  --yellow-soft: #fff0c4;
+  --coral: #ff6b5c;
+  --coral-soft: #ffd6cb;
+  --blue: #2f86f6;
+  --blue-soft: #dde9f7;
+  --teal: #18b8a6;
+
+  /* The current mission accent. Set by [data-mission] on any ancestor. */
+  --mission: var(--ink);
+  --mission-soft: var(--paper-tint);
+
+  /* Shape: chunky outlines with a hard offset shadow, like toy blocks */
+  --radius-l: 18px;
+  --radius-m: 12px;
+  --radius-s: 8px;
+  --line: 2px solid var(--ink);
+  --lift: 4px 4px 0 var(--ink);
+  --lift-s: 2px 2px 0 var(--ink);
+
+  /* Type */
+  --font: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --text-xs: 0.8125rem;
+  --text-s: 0.875rem;
+  --text-m: 1rem;
+  --text-l: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  /* Layout */
+  --edge: 20px;
+  --gap: 12px;
+  --panel-width: 24rem;
+  --tap: 44px;
+}
+
+[data-mission='network'] {
+  --mission: var(--blue);
+  --mission-soft: var(--blue-soft);
+}
+[data-mission='signal'] {
+  --mission: var(--yellow);
+  --mission-soft: var(--yellow-soft);
+}
+[data-mission='launch'] {
+  --mission: var(--coral);
+  --mission-soft: var(--coral-soft);
+}
+
+@media (max-width: 899px), (max-aspect-ratio: 1 / 1) {
+  :root {
+    --edge: 12px;
+    --gap: 10px;
+  }
+}

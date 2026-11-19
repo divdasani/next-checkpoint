@@ -1,0 +1,465 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   The readable resume on screen: the sheet that holds it (ui/ResumeDialog.tsx),
+   the resume itself (ui/Resume.tsx), and the plain copy shown when JavaScript is
+   off (content/resumeHtml.ts).
+
+   Everything in this file sits inside "@media screen", so none of it reaches
+   paper. Printing is styled on its own, from a clean start, in print.css.
+
+   Colors, outlines, and buttons come from tokens.css and base.css. Sizes are in
+   rem, so the resume grows with the root font size that layout.css raises for
+   large recording windows.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media screen {
+  /* ── The sheet ──────────────────────────────────────────────────────────── */
+
+  /* Never set "display" on .resume-dialog itself: the browser hides a closed dialog
+     with display: none, and a rule here would show it again. */
+  .resume-dialog {
+    /* Free space kept between the sheet and the edges of the window. */
+    --resume-gap: max(var(--edge), 1.5rem);
+    /* Side padding inside the sheet: small on a phone, generous on a desktop. */
+    --resume-pad: clamp(1rem, 4vw, 2.5rem);
+    /* Phone notches and home indicators. Zero everywhere else. */
+    --resume-safe-x: calc(env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px));
+    --resume-safe-y: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+
+    /* Lets the toolbar below adapt to the width of the sheet (see the @container rules). */
+    container: resume-dialog / inline-size;
+
+    /* Centered in the window: about 820px wide on a desktop, nearly full screen on a phone.
+       The sheet itself scrolls when the resume is taller than the window. */
+    position: fixed;
+    inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
+      env(safe-area-inset-left, 0px);
+    z-index: 10;
+    width: min(51.25rem, calc(100% - 2 * var(--resume-gap) - var(--resume-safe-x)));
+    max-width: none;
+    height: fit-content;
+    max-height: calc(100% - 2 * var(--resume-gap) - var(--resume-safe-y));
+    margin: auto;
+    padding: 0;
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+    /* Keeps a link reached with Tab from hiding under the toolbar, even when
+       the toolbar has wrapped onto two rows. */
+    scroll-padding-top: 7.5rem;
+    scrollbar-width: thin;
+
+    border: var(--line);
+    border-radius: var(--radius-l);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: var(--lift);
+  }
+
+  /* The dimmed world behind the sheet. This is --ink at half strength, written out
+     because older browsers do not pass custom properties to ::backdrop. */
+  .resume-dialog::backdrop {
+    background: rgb(20 33 61 / 0.5);
+  }
+
+  /* Phones, tall windows, and short landscape windows: use nearly the whole screen. */
+  @media (max-width: 559px), (max-aspect-ratio: 1 / 1), (max-height: 559px) {
+    .resume-dialog {
+      --resume-gap: 0.5rem;
+    }
+  }
+
+  /* A short entrance, skipped for visitors who asked for reduced motion.
+     (The global rule in base.css does not reach ::backdrop, hence this query.) */
+  @media (prefers-reduced-motion: no-preference) {
+    .resume-dialog[open] {
+      animation: rise-in 220ms ease-out both;
+    }
+
+    .resume-dialog[open]::backdrop {
+      animation: resume-backdrop-in 220ms ease-out both;
+    }
+  }
+
+  @keyframes resume-backdrop-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* ── Toolbar ────────────────────────────────────────────────────────────── */
+
+  .resume-dialog__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem var(--resume-pad);
+    border-bottom: var(--line);
+    background: var(--paper-tint);
+  }
+
+  /* Compact first (a phone): no title, Print and LinkedIn on the left, Close on the right. */
+  .resume-dialog__title {
+    display: none;
+    color: var(--ink);
+  }
+
+  .resume-dialog__actions {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .resume-dialog__close {
+    margin-left: auto;
+  }
+
+  .resume-dialog__btn {
+    gap: 0.375rem;
+    padding: 0 0.75rem;
+    font-size: var(--text-s);
+    white-space: nowrap;
+  }
+
+  .resume-dialog__icon {
+    display: none;
+    flex: none;
+    width: 1em;
+    height: 1em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* The narrowest phones: slimmer buttons, so all three still share one row. */
+  @container resume-dialog (max-width: 21em) {
+    .resume-dialog__toolbar {
+      padding-inline: 0.75rem;
+    }
+
+    .resume-dialog__actions {
+      gap: 0.25rem;
+    }
+
+    .resume-dialog__btn {
+      padding: 0 0.5625rem;
+    }
+  }
+
+  /* Roomy: the word "Resume" on the left, all buttons together on the right, with icons. */
+  @container resume-dialog (min-width: 30em) {
+    .resume-dialog__title {
+      display: block;
+      flex: none;
+      margin-right: auto;
+    }
+
+    .resume-dialog__actions {
+      flex: 0 1 auto;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    .resume-dialog__close {
+      margin-left: 0;
+    }
+
+    .resume-dialog__btn {
+      padding: 0 0.9375rem;
+    }
+
+    .resume-dialog__icon {
+      display: block;
+    }
+  }
+
+  /* A very short window (a small phone on its side, or a page zoomed in a long way):
+     the toolbar scrolls away with the resume instead of taking a third of the space.
+     Escape still closes the sheet, and the buttons are back at the top. */
+  @media (max-height: 340px) {
+    .resume-dialog__toolbar {
+      position: static;
+    }
+  }
+
+  .resume-dialog__body {
+    padding: clamp(1.25rem, 4vw, 2rem) var(--resume-pad) clamp(1.5rem, 5vw, 2.5rem);
+  }
+
+  /* ── The resume ─────────────────────────────────────────────────────────── */
+
+  .resume {
+    /* The sections below ask how wide the resume is, not how wide the window is. */
+    container: resume / inline-size;
+    display: grid;
+    gap: 1.25rem;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+
+  /* Words meant only for screen readers stay out of copied text. */
+  .resume .visually-hidden {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .resume__header {
+    display: grid;
+    gap: 0.375rem;
+  }
+
+  .resume__name {
+    width: fit-content;
+    font-size: clamp(1.75rem, 1.3rem + 2.2vw, 2.25rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+  }
+
+  /* The name takes keyboard focus when the sheet opens. Round the outline a little. */
+  .resume__name:focus-visible {
+    outline-offset: 0.25rem;
+    border-radius: var(--radius-s);
+  }
+
+  .resume__headline {
+    font-size: var(--text-l);
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--ink-soft);
+  }
+
+  .resume__contact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 0.5rem;
+    color: var(--ink-soft);
+  }
+
+  /* Tall enough to tap comfortably, even though it reads as a line of text. */
+  .resume__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 0.125rem;
+    text-underline-offset: 0.2em;
+    overflow-wrap: anywhere;
+  }
+
+  .resume__link:hover {
+    text-decoration-color: var(--blue);
+  }
+
+  /* One titled block. A pale rule separates it from the block above. */
+  .resume__section {
+    display: grid;
+    gap: 0.625rem;
+    padding-top: 1.25rem;
+    border-top: 0.125rem solid var(--blue-soft);
+  }
+
+  /* Section title with a small yellow block in front, like a marker on the map. */
+  .resume__heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: var(--text-xs);
+    font-weight: 800;
+    line-height: 1.3;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  /* The top margin centers the block on the first line when a long title wraps. */
+  .resume__heading::before {
+    content: '';
+    flex: none;
+    width: 0.625rem;
+    height: 0.625rem;
+    margin-top: 0.2em;
+    border: 0.125rem solid var(--ink);
+    border-radius: 0.1875rem;
+    background: var(--yellow);
+  }
+
+  .resume__body {
+    display: grid;
+    gap: 1.5rem;
+    min-width: 0;
+  }
+
+  .resume__skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .resume__skill {
+    padding: 0.1875rem 0.6875rem;
+    border: 0.09375rem solid var(--ink);
+    border-radius: 999px;
+    background: var(--paper-tint);
+    font-size: var(--text-s);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .resume__entry {
+    display: grid;
+    gap: 0.625rem;
+  }
+
+  /* Narrow: organization, role, then place and dates on one line. */
+  .resume__entry-head {
+    display: grid;
+    gap: 0.25rem 1.5rem;
+  }
+
+  .resume__entry-title {
+    display: grid;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  /* base.css clears the default margins of h1 to h3 only, so this h4 clears its own. */
+  .resume__org {
+    margin: 0;
+    font-size: var(--text-l);
+    font-weight: 800;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .resume__role {
+    font-weight: 700;
+    line-height: 1.35;
+    text-wrap: balance;
+  }
+
+  .resume__meta {
+    font-size: var(--text-s);
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--ink-soft);
+  }
+
+  /* The dot between place and dates. */
+  .resume__meta-dot {
+    font-weight: 800;
+  }
+
+  /* Square bullets, to match the blocks of the world. */
+  .resume__bullets {
+    display: grid;
+    gap: 0.5rem;
+    padding-left: 1.25em;
+    list-style: square;
+  }
+
+  .resume__bullets li {
+    padding-left: 0.125em;
+  }
+
+  .resume__bullets li::marker {
+    color: var(--blue);
+  }
+
+  /* Wide enough for two columns: section titles down the left, content on the right.
+     This keeps lines at a comfortable reading length inside the wide desktop sheet. */
+  @container resume (min-width: 40em) {
+    .resume__section {
+      grid-template-columns: 11.5rem minmax(0, 1fr);
+      gap: 0.625rem 1.5rem;
+      align-items: start;
+    }
+
+    .resume__heading {
+      padding-top: 0.25rem;
+    }
+
+    /* Place and dates move to the right edge, one above the other. */
+    .resume__entry-head {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+    }
+
+    .resume__meta {
+      display: grid;
+      gap: 0.125rem;
+      justify-items: end;
+      padding-top: 0.1875rem;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .resume__meta-dot {
+      display: none;
+    }
+  }
+
+  /* ── The copy shown without JavaScript ──────────────────────────────────── */
+
+  /* Its width, margin, padding, and white background are written on the element itself
+     in resumeHtml.ts. These rules add the look of the other cards. */
+  .resume-static {
+    border: var(--line);
+    border-radius: var(--radius-l);
+    box-shadow: var(--lift);
+  }
+
+  .resume-static__notice {
+    display: grid;
+    gap: 0.125rem;
+    margin-bottom: 1.5rem;
+    padding: 0.75rem 1rem;
+    border: var(--line);
+    border-radius: var(--radius-m);
+    background: var(--yellow-soft);
+  }
+
+  .resume-static__title {
+    font-size: var(--text-l);
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .resume-static__note {
+    font-size: var(--text-s);
+    font-weight: 600;
+  }
+
+  .resume-static__download {
+    margin-bottom: 1rem;
+    font-weight: 700;
+  }
+
+  .resume-static__download a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    text-underline-offset: 0.2em;
+  }
+
+  .resume-static__credit {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 0.125rem solid var(--blue-soft);
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+  }
+}

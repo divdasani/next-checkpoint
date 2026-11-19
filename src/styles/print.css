@@ -1,0 +1,238 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Printing. "Print resume" and the browser's own Print command both put only the
+   resume on paper, as a plain black-on-white document. The world and the
+   interface are left out.
+
+   This works whether the resume sheet is open or closed, because the sheet is
+   always on the page (see ui/ResumeDialog.tsx). The rules below turn it from a
+   pop-up into ordinary page content.
+
+   Nothing from resume.css applies here (that file is for screens only), so this
+   file describes the whole printed look. Sizes are in points, the unit of paper.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media print {
+  /* Paper margins. With the type sizes and spacing below, the resume fits on one Letter
+     or A4 page with about half an inch to spare, which allows for typefaces that run wider. */
+  @page {
+    margin: 0.5in 0.65in;
+  }
+
+  /* ── The page: white, with only the resume on it ────────────────────────── */
+
+  html,
+  body {
+    min-height: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* The world and its interface. */
+  .app-shell {
+    display: none !important;
+  }
+
+  /* Anything else that React renders next to the resume sheet. */
+  #root > :not(.resume-dialog):not(:has(.resume-dialog)) {
+    display: none !important;
+  }
+
+  /* The sheet becomes a normal block at the top of the page. "display: block" is what
+     prints it while it is closed, since a closed dialog is otherwise hidden. An open one
+     floats above the page, so it is also pinned to the top corner of the paper. */
+  .resume-dialog {
+    display: block !important;
+    position: static !important;
+    inset: 0 0 auto !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    animation: none !important;
+  }
+
+  .resume-dialog::backdrop {
+    display: none !important;
+  }
+
+  /* Buttons have no use on paper. */
+  .resume-dialog__toolbar {
+    display: none !important;
+  }
+
+  /* The keyboard focus outline belongs to the screen. */
+  .resume-dialog :focus,
+  .resume-dialog :focus-visible {
+    outline: none !important;
+  }
+
+  /* The copy shown without JavaScript prints the same way: drop the card, the notice,
+     and the credit. "!important" is needed to override the styles written on the element. */
+  .resume-static {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .resume-static__notice,
+  .resume-static__download,
+  .resume-static__credit {
+    display: none !important;
+  }
+
+  /* ── The resume as a document ───────────────────────────────────────────── */
+
+  /* A plain system typeface instead of the rounded one used on screen. */
+  .resume {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.28;
+    color: #000;
+  }
+
+  .resume a {
+    color: #000;
+    text-decoration: none;
+  }
+
+  /* Name and headline on the left, the LinkedIn address on the right. */
+  .resume__header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 18pt;
+    align-items: end;
+    padding-bottom: 6pt;
+    border-bottom: 1.25pt solid #000;
+  }
+
+  .resume__name {
+    grid-column: 1;
+    font-size: 21pt;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .resume__headline {
+    grid-column: 1;
+    margin-top: 1pt;
+    font-size: 11pt;
+    font-weight: 600;
+  }
+
+  .resume__contact {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: grid;
+    justify-items: end;
+    text-align: right;
+  }
+
+  /* The link text is the address itself, so it can be read and typed from paper. */
+  .resume__link {
+    font-weight: 700;
+  }
+
+  .resume__section {
+    margin-top: 8pt;
+  }
+
+  .resume__heading {
+    margin-bottom: 3.5pt;
+    padding-bottom: 1.5pt;
+    border-bottom: 0.5pt solid #000;
+    font-size: 8.5pt;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    /* Keep a title on the same page as what follows it. */
+    break-after: avoid;
+    break-inside: avoid;
+  }
+
+  .resume__summary {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Skills as one sentence, separated by commas. */
+  .resume__skill {
+    display: inline;
+  }
+
+  .resume__skill:not(:last-child)::after {
+    content: ', ';
+  }
+
+  /* If the resume ever runs onto a second page, an entry moves there whole
+     instead of being cut in two. */
+  .resume__entry {
+    break-inside: avoid;
+  }
+
+  .resume__entry + .resume__entry {
+    margin-top: 7pt;
+  }
+
+  /* Organization and role on the left, place and dates on the right, line for line. */
+  .resume__entry-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18pt;
+    break-after: avoid;
+    break-inside: avoid;
+  }
+
+  /* base.css clears the default margins of h1 to h3 only, so this h4 clears its own. */
+  .resume__org {
+    margin: 0;
+    font-size: 10.5pt;
+    font-weight: 800;
+    line-height: 1.28;
+  }
+
+  .resume__role {
+    font-style: italic;
+  }
+
+  .resume__meta {
+    display: grid;
+    justify-items: end;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Place and dates are on separate lines here, so the dot between them is not needed. */
+  .resume__meta-dot {
+    display: none;
+  }
+
+  /* Same size as the organization beside it, so the two lines sit level. */
+  .resume__location {
+    font-size: 10.5pt;
+    line-height: 1.28;
+  }
+
+  .resume__bullets {
+    margin-top: 2.5pt;
+    padding-left: 13pt;
+    list-style: disc;
+  }
+
+  .resume__bullets li {
+    margin-top: 1.5pt;
+    break-inside: avoid;
+  }
+}
