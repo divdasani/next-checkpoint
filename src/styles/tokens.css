@@ -36,6 +36,7 @@
   --blue: #2f86f6;
   --blue-soft: #dde9f7;
   --teal: #18b8a6;
+  --teal-soft: #d3f1ec;
 
   /* The current mission accent. Set by [data-mission] on any ancestor. */
   --mission: var(--ink);
@@ -65,6 +66,10 @@
   --tap: 44px;
 }
 
+[data-mission='discover'] {
+  --mission: var(--teal);
+  --mission-soft: var(--teal-soft);
+}
 [data-mission='network'] {
   --mission: var(--blue);
   --mission-soft: var(--blue-soft);

@@ -354,7 +354,7 @@ describe('the math agrees with a real three.js camera', () => {
     expect(up[1]).toBeGreaterThan(0)
   })
 
-  it('on screen, launch is at the back, network on the left, signal on the right, and home in front', () => {
+  it('on screen, launch is at the back, network on the left, signal on the right, and home and the pitch deck in front', () => {
     const framing = computeFraming(DESKTOP.canvas, DESKTOP.safe, null)
     const at = (mission: MissionId) => projectToCanvas(ZONES[mission].center, framing, DESKTOP.canvas)
     const home = projectToCanvas([5, 0, 5], framing, DESKTOP.canvas)
@@ -365,5 +365,10 @@ describe('the math agrees with a real three.js camera', () => {
     // The start corner is nearest the viewer, lowest on screen.
     expect(home.y).toBeGreaterThan(at('network').y)
     expect(home.y).toBeGreaterThan(at('signal').y)
+    // The pitch deck fills that front corner: lowest on screen, between the hub and the signal station.
+    expect(at('discover').y).toBeGreaterThan(at('network').y)
+    expect(at('discover').y).toBeGreaterThan(at('signal').y)
+    expect(at('discover').x).toBeGreaterThan(at('network').x)
+    expect(at('discover').x).toBeLessThan(at('signal').x)
   })
 })

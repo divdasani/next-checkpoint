@@ -1,4 +1,4 @@
-import type { MissionId, ReadinessId, SourceId, StopId } from '../state/types.ts'
+import type { DiscoveryId, MissionId, ReadinessId, RoadStopId, SourceId, StopId } from '../state/types.ts'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The whole world as fixed data. Nothing here is random or generated at runtime
@@ -49,6 +49,7 @@ export const PALETTE = {
   plazaYellow: '#fff0c4',
   plazaCoral: '#ffd6cb',
   plazaCoralTop: '#ffe7df',
+  plazaTeal: '#d3f1ec',
   // Screens and lights
   screenOff: '#2a3757',
   screenOn: '#f3fbff',
@@ -58,9 +59,10 @@ export const PALETTE = {
 export type PaletteKey = keyof typeof PALETTE
 
 export const MISSION_COLOR: Record<MissionId, string> = {
-  network: PALETTE.blue,
+  discover: PALETTE.teal,
   signal: PALETTE.yellow,
   launch: PALETTE.coral,
+  network: PALETTE.blue,
 }
 
 // ── Island proportions ───────────────────────────────────────────────────────
@@ -75,18 +77,33 @@ export const ZONE_MAX = 6.9
 
 // ── Avatar stops and the road between them ───────────────────────────────────
 
-export const STOPS: Record<StopId, Vec3> = {
-  home: [RING, 0, RING],
-  network: [-RING, 0, RING],
-  launch: [-RING, 0, -RING],
-  signal: [RING, 0, -RING],
-}
-
 /** Height of the top of a checkpoint pad. The avatar's feet rest here. */
 export const PAD_TOP = 0.125
 
-/** Stops in order around the ring road. Neighbors in this list are joined by a straight road. */
-export const RING_ORDER: readonly StopId[] = ['home', 'network', 'launch', 'signal']
+/** The pond inside the ring road: half the width of its water, and the height of the water. */
+export const POND_HALF = 1.05
+export const POND_WATER_TOP = 0.07
+
+/**
+ * Where the avatar can stand. The height is measured from the top of a checkpoint pad,
+ * so it is 0 everywhere on the road.
+ */
+export const STOPS: Record<StopId, Vec3> = {
+  home: [RING, 0, RING],
+  // The first checkpoint is where the trail starts, so it shares the front corner with home.
+  discover: [RING, 0, RING],
+  network: [-RING, 0, RING],
+  launch: [-RING, 0, -RING],
+  signal: [RING, 0, -RING],
+  // The middle of the pond, where the ending is celebrated. The water lies a little lower than the pads.
+  center: [0, POND_WATER_TOP - PAD_TOP, 0],
+}
+
+/**
+ * The four corners of the ring road, in order. Neighbors in this list are joined by a
+ * straight road. The discover stop is the home corner under another name (see paths.ts).
+ */
+export const RING_ORDER: readonly RoadStopId[] = ['home', 'network', 'launch', 'signal']
 
 // ── Mission zones ────────────────────────────────────────────────────────────
 
@@ -105,6 +122,16 @@ export interface ZoneSpec {
 }
 
 export const ZONES: Record<MissionId, ZoneSpec> = {
+  discover: {
+    id: 'discover',
+    center: [5, 0.12, 5],
+    bounds: [ZONE_MIN, ZONE_MIN, ZONE_MAX, ZONE_MAX],
+    floorY: 0.12,
+    topY: 2.5,
+    // Above the left edge of the magnifying glass. The label leans left from there (see the
+    // pins in hud.css), because the avatar's home pad is straight above this zone on screen.
+    pin: [3.3, 2.5, 6.35],
+  },
   network: {
     id: 'network',
     center: [-5, 0.12, 5],
@@ -132,6 +159,25 @@ export const ZONES: Record<MissionId, ZoneSpec> = {
 }
 
 // ── Mission kits: where each mission's objects stand ─────────────────────────
+
+/**
+ * The pitch deck stands on the front corner, nearest the camera, so everything on it is
+ * placed where it cannot hide the avatar on the home pad behind it.
+ */
+export const DISCOVER_KIT = {
+  /** The magnifying glass: the middle of its ring, on the floor. The glass faces +z. */
+  lens: [3.85, 0.12, 6.35] as Vec3,
+  /** Three step posts in a row that reads left to right on screen, like the HTML panel. */
+  posts: {
+    research: [4.3, 0.12, 5.25],
+    need: [4.85, 0.12, 4.7],
+    concept: [5.4, 0.12, 4.15],
+  } as Record<DiscoveryId, Vec3>,
+  /** The pitch button, at the front of the deck. */
+  button: [5.85, 0.12, 5.75] as Vec3,
+  /** The winners' podium: the middle of its tallest step, on the floor. Its steps run along z. */
+  podium: [6.35, 0.12, 4.15] as Vec3,
+} as const
 
 const HUB: Vec3 = [-5, 0.12, 5]
 const COMPANY_SPACING = 1.35
@@ -250,7 +296,8 @@ export const TERRAIN: readonly BlockSpec[] = [
   slab('grass-back', 'grass', -H, H, -H, Z0, -0.3, 0),
   slab('grass-left', 'grass', -H, Z0, Z0, H, -0.3, 0),
   slab('sand-terrace', 'sand', Z0, H, Z0, H, -0.3, -0.22, { cast: false }),
-  // Zone floors.
+  // Zone floors. The deck on the sand terrace is thicker, so its top is level with the others.
+  slab('plaza-discover', 'plazaTeal', Z0, Z1, Z0, Z1, -0.22, 0.12),
   slab('plaza-network', 'plazaBlue', -Z1, -Z0, Z0, Z1, 0, 0.12, { cast: false }),
   slab('plaza-signal', 'plazaYellow', Z0, Z1, -Z1, -Z0, 0, 0.12, { cast: false }),
   slab('plaza-launch-1', 'plazaCoral', -Z1, -Z0, -Z1, -Z0, 0, 0.25),
@@ -292,9 +339,6 @@ export const PROPS: readonly PropSpec[] = [
   { kind: 'rock', id: 'rock-front-left', at: [1.3, 0, 5.3], scale: 0.8 },
   { kind: 'bush', id: 'bush-front-right', at: [5.7, 0, 0.9], scale: 0.85 },
   { kind: 'rock', id: 'rock-front-right', at: [5.1, 0, -1.4], scale: 0.7 },
-  // Sand terrace
-  { kind: 'rock', id: 'rock-sand-a', at: [5.9, -0.22, 4.2], scale: 1 },
-  { kind: 'rock', id: 'rock-sand-b', at: [4.3, -0.22, 6.1], scale: 0.65 },
   // Flowers
   { kind: 'flower', id: 'flower-1', at: [0.3, 0, 4.6], color: 'white' },
   { kind: 'flower', id: 'flower-2', at: [0.8, 0, 6.2], color: 'yellow' },

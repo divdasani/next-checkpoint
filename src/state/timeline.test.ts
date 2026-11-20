@@ -2,11 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { content } from '../content/content.ts'
 import { createInitialState, gameReducer } from './reducer.ts'
 import { TOUR_DURATION_MS, TOUR_STEPS } from './timeline.ts'
-import { COMPANY_COUNT, MISSION_IDS, READINESS_IDS, SOURCE_IDS, type GameState, type MissionId } from './types.ts'
+import { completedCount } from './selectors.ts'
+import {
+  COMPANY_COUNT,
+  DISCOVERY_IDS,
+  MISSION_IDS,
+  READINESS_IDS,
+  SOURCE_IDS,
+  type GameState,
+  type MissionId,
+} from './types.ts'
 
 // The guided sequence is a list of timed steps. These tests play that list through the
 // real reducer and check two things: the story it tells (same rules as a visitor, nothing
-// skipped) and its timing (40 to 60 seconds, with cards held long enough to read).
+// skipped) and its timing (65 to 85 seconds, with every screen held long enough to read).
 
 // Helpers ---------------------------------------------------------------------
 
@@ -42,16 +51,23 @@ function replay(start: GameState): Frame[] {
 
 /** The part of the state that is the world itself: no mode, timeline position, or resume flag. */
 function world(state: GameState) {
-  const { phase, activeMission, avatarStop, network, signal, launch, card, hint, cheers } = state
-  return { phase, activeMission, avatarStop, network, signal, launch, card, hint, cheers }
+  const { phase, activeMission, avatarStop, discover, signal, launch, network, card, hint, cheers } = state
+  return { phase, activeMission, avatarStop, discover, signal, launch, network, card, hint, cheers }
 }
 
 function finished(state: GameState): Record<MissionId, boolean> {
   return {
-    network: state.network.connected.every(Boolean),
+    discover: state.discover.pitched,
     signal: state.signal.feedOn,
     launch: state.launch.launched,
+    network: state.network.connected.every(Boolean),
   }
+}
+
+/** How long a text takes to read at an easy 200 words a minute, in milliseconds. */
+function readingTime(parts: readonly string[]): number {
+  const words = parts.join(' ').split(/\s+/).filter(Boolean).length
+  return (words / 200) * 60_000
 }
 
 const tourFrames = () => replay(createInitialState({ mode: 'tour' }))
@@ -74,10 +90,12 @@ describe('timing of the guided sequence', () => {
     }
   })
 
-  it('lasts between 40 and 60 seconds, measured to its last step', () => {
+  // With three missions the sequence had to last 40 to 60 seconds. The fourth checkpoint
+  // adds a card, and Annika chose a longer sequence over shorter cards (19 November 2026).
+  it('lasts between 65 and 85 seconds, measured to its last step', () => {
     expect(TOUR_DURATION_MS).toBe(TOUR_STEPS[TOUR_STEPS.length - 1].at)
-    expect(TOUR_DURATION_MS).toBeGreaterThanOrEqual(40_000)
-    expect(TOUR_DURATION_MS).toBeLessThanOrEqual(60_000)
+    expect(TOUR_DURATION_MS).toBeGreaterThanOrEqual(65_000)
+    expect(TOUR_DURATION_MS).toBeLessThanOrEqual(85_000)
   })
 
   it('holds on the unfinished world for at least 3 seconds before anything happens', () => {
@@ -88,16 +106,44 @@ describe('timing of the guided sequence', () => {
     expect(firstChange?.at).toBeGreaterThanOrEqual(3_000)
   })
 
+  it('holds the opening long enough to read the byline, the headline, and what the site demonstrates', () => {
+    // What the first panel of the sequence shows (ui/panels/OverviewPanel.tsx, while busy).
+    const shown = [content.trail.byline, content.intro.opening, content.trail.demo]
+    expect(TOUR_STEPS[0].at).toBeGreaterThanOrEqual(readingTime(shown))
+  })
+
   it.each(MISSION_IDS)('keeps the %s card on screen long enough to read it at 200 words a minute', (mission) => {
     const frames = tourFrames()
     const opened = firstFrame(frames, (state) => state.card === mission, `${mission} card opens`)
     const closed = frames.find((frame) => frame.index > opened.index && frame.after.card !== mission)
     expect(closed, `the ${mission} card is closed again`).toBeDefined()
-    // What a Film take shows on a card: the "Real experience" label, the statement, and its two labels.
-    const { quote, labels } = content.missions[mission].evidence
-    const words = [content.cardLabels.realExperience, quote, ...labels].join(' ').split(/\s+/).length
-    const readingTime = (words / 200) * 60_000
-    expect((closed?.at ?? 0) - opened.at).toBeGreaterThanOrEqual(readingTime)
+    // What a card shows while the sequence plays (ui/panels/EvidenceCard.tsx, while busy):
+    // "Checkpoint complete" and the checkpoint's name, the stamp line, the passport count,
+    // the results, the teams, steps, or takeaway, and the skills. The full statement is
+    // left out of the timed card, so it is not counted here.
+    const { checkpoint } = content.missions[mission]
+    const { trail } = content
+    const shown = [
+      trail.checkpointComplete,
+      checkpoint.name,
+      trail.stampEarned(checkpoint.stamp),
+      trail.count(completedCount(opened.after)),
+      ...checkpoint.metrics.flatMap((metric) => [metric.value, metric.label]),
+      ...(checkpoint.teams ?? []),
+      ...(checkpoint.flow ?? []),
+      checkpoint.theme ?? '',
+      trail.skillsUnlocked,
+      ...checkpoint.skills,
+    ]
+    expect((closed?.at ?? 0) - opened.at).toBeGreaterThanOrEqual(readingTime(shown))
+  })
+
+  it.each(MISSION_IDS)('gives the %s mission enough time to read the problem behind it', (mission) => {
+    const frames = tourFrames()
+    const selected = firstFrame(frames, (state) => state.activeMission === mission, `${mission} is selected`)
+    const completed = firstFrame(frames, (state) => state.card === mission, `${mission} card opens`)
+    // While the sequence plays, the mission panel leads with the challenge (MissionPanel.tsx).
+    expect(completed.at - selected.at).toBeGreaterThanOrEqual(readingTime([content.missions[mission].checkpoint.challenge]))
   })
 
   it('holds on the finale for at least 5 seconds before the sequence is marked done', () => {
@@ -109,7 +155,7 @@ describe('timing of the guided sequence', () => {
   })
 
   it('matches the length the intro promises, when the intro states one', () => {
-    // content.intro.tourNote tells visitors roughly how long the tour takes ("about 50 seconds").
+    // content.intro.tourNote tells visitors roughly how long the tour takes ("about 80 seconds").
     // If that wording keeps a number, the number has to be true. Without a number there is no claim to check.
     const stated = /(\d+)\s*seconds/.exec(content.intro.tourNote)
     if (stated) expect(Math.abs(Number(stated[1]) - TOUR_DURATION_MS / 1000)).toBeLessThanOrEqual(5)
@@ -117,10 +163,15 @@ describe('timing of the guided sequence', () => {
 })
 
 describe('the story the guided sequence tells', () => {
-  it('visits the three destinations in order: network, signal, launch', () => {
+  it('visits the four checkpoints in trail order: discover, signal, launch, network', () => {
     const visits = TOUR_STEPS.flatMap((step) => (step.action?.type === 'SELECT_MISSION' ? [step.action.mission] : []))
-    expect(visits).toEqual(['network', 'signal', 'launch'])
+    expect(visits).toEqual(['discover', 'signal', 'launch', 'network'])
     expect(visits).toEqual([...MISSION_IDS])
+  })
+
+  it('does every step on the pitch deck, each exactly once', () => {
+    const steps = TOUR_STEPS.flatMap((step) => (step.action?.type === 'EXPLORE' ? [step.action.step] : []))
+    expect([...steps].sort()).toEqual([...DISCOVERY_IDS].sort())
   })
 
   it('connects all eight companies, each exactly once', () => {
@@ -161,18 +212,20 @@ describe('the story the guided sequence tells', () => {
     })
   })
 
-  it('sends the avatar to each destination as it is selected, and to the launch stop for the ending', () => {
+  it('sends the avatar to each destination as it is selected, and to the middle of the island for the ending', () => {
     for (const { after, index } of tourFrames()) {
       const action = TOUR_STEPS[index].action
       if (action?.type === 'SELECT_MISSION') expect(after.avatarStop).toBe(action.mission)
     }
-    expect(tourFrames().at(-1)?.after.avatarStop).toBe('launch')
+    expect(tourFrames().at(-1)?.after.avatarStop).toBe('center')
   })
 
-  it('opens each Real experience card at the moment its mission completes, in mission order', () => {
+  it('opens each checkpoint card at the moment its mission completes, in trail order', () => {
     const frames = tourFrames()
     const opened = frames.filter(({ before, after }) => after.card !== null && before.card !== after.card)
-    expect(opened.map(({ after }) => after.card)).toEqual(['network', 'signal', 'launch'])
+    expect(opened.map(({ after }) => after.card)).toEqual(['discover', 'signal', 'launch', 'network'])
+    // Each card opens with one more stamp in the passport than the one before.
+    expect(opened.map(({ after }) => completedCount(after))).toEqual([1, 2, 3, 4])
     for (const { before, after } of opened) {
       const mission = after.card
       if (!mission) continue
@@ -181,15 +234,15 @@ describe('the story the guided sequence tells', () => {
     }
   })
 
-  it('ends done, in the finale, with all three missions complete and no card open', () => {
+  it('ends done, in the finale, with all four missions complete and no card open', () => {
     const end = tourFrames().at(-1)?.after
     expect(end).toBeDefined()
     if (!end) return
     expect(end.tour).toMatchObject({ status: 'done', cursor: TOUR_STEPS.length })
     expect(end).toMatchObject({ phase: 'finale', card: null, activeMission: null, hint: null })
-    expect(finished(end)).toEqual({ network: true, signal: true, launch: true })
-    // Three completions and the finale: one small avatar gesture each.
-    expect(end.cheers).toBe(4)
+    expect(finished(end)).toEqual({ discover: true, signal: true, launch: true, network: true })
+    // Four completions and the finale: one small avatar gesture each.
+    expect(end.cheers).toBe(5)
   })
 })
 

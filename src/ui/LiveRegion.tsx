@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { content, missionContent } from '../content/content.ts'
 import { useGame } from '../state/GameContext.tsx'
-import { isMissionComplete } from '../state/selectors.ts'
+import { completedCount, isMissionComplete } from '../state/selectors.ts'
 import { MISSION_IDS, type GameState } from '../state/types.ts'
 
 // Screen readers cannot see the world change, so this hidden line says what just happened:
-// a mission was selected or completed, a step is still missing, the finale appeared, or the
-// guided sequence was paused, resumed, or restarted. It compares the previous state with the
+// a checkpoint was selected or completed (and its stamp earned), a step is still missing,
+// the trail was finished, or the guided sequence was paused, resumed, or restarted. It compares the previous state with the
 // new one, so it works the same for clicks, keyboard input, and the guided timeline.
 
 /** A non-breaking space, written as an escape so it stays visible in the source. */
@@ -32,21 +32,28 @@ function describeChange(before: GameState, after: GameState): string | null {
     if (was === 'running' && now === 'done') return `${name} finished.`
   }
 
-  if (before.phase !== 'finale' && after.phase === 'finale') return content.finale.heading
+  const { trail } = content
+  if (before.phase !== 'finale' && after.phase === 'finale') return `${trail.complete}. ${content.finale.heading}`
 
   for (const id of MISSION_IDS) {
     if (!isMissionComplete(before, id) && isMissionComplete(after, id)) {
-      const { completeLine, evidence } = missionContent(id)
-      // In play mode focus moves to the Real experience card and the reader reads it there.
-      // The guided sequence never moves focus, so the statement is read out here instead.
-      if (after.mode === 'play') return completeLine
-      return `${completeLine} ${content.cardLabels.realExperience}: ${evidence.quote}`
+      const { completeLine, checkpoint, evidence } = missionContent(id)
+      const earned = `${trail.stampEarned(checkpoint.stamp)}. ${content.overview.progress(completedCount(after))}.`
+      // In play mode focus moves to the checkpoint card and the reader reads it there.
+      // The guided sequence never moves focus, and its card leaves the statement out, so
+      // the statement is read out here instead.
+      if (after.mode === 'play') return `${completeLine} ${earned}`
+      return `${completeLine} ${earned} ${content.cardLabels.realExperience}: ${evidence.quote}`
     }
   }
 
-  // Feed or Launch was pressed too early. This is the same sentence the panel shows.
+  // Pitch, Feed, or Launch was pressed too early. This is the same sentence the panel shows.
   const { hint } = after
   if (hint && hint !== before.hint) {
+    if (hint.mission === 'discover') {
+      const { blocked, steps } = content.missions.discover
+      return blocked(hint.missing.map((id) => steps[id]))
+    }
     if (hint.mission === 'signal') {
       const { blocked, sources } = content.missions.signal
       return blocked(hint.missing.map((id) => sources[id]))
@@ -57,7 +64,7 @@ function describeChange(before: GameState, after: GameState): string | null {
 
   if (after.activeMission && after.activeMission !== before.activeMission) {
     const mission = missionContent(after.activeMission)
-    return `Mission ${mission.number}: ${mission.title}.`
+    return `${trail.checkpoint} ${mission.number}, ${mission.checkpoint.name}: ${mission.title}.`
   }
 
   return null

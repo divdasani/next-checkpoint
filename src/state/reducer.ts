@@ -3,6 +3,7 @@ import {
   isMissionComplete,
   isTourBusy,
   isWorldFresh,
+  missingDiscovery,
   missingReadiness,
   missingSources,
 } from './selectors.ts'
@@ -21,16 +22,17 @@ import {
 
 type World = Pick<
   GameState,
-  'activeMission' | 'avatarStop' | 'network' | 'signal' | 'launch' | 'card' | 'hint' | 'cheers'
+  'activeMission' | 'avatarStop' | 'discover' | 'signal' | 'launch' | 'network' | 'card' | 'hint' | 'cheers'
 >
 
 function freshWorld(): World {
   return {
     activeMission: null,
     avatarStop: 'home',
-    network: { connected: Array.from({ length: COMPANY_COUNT }, () => false) },
+    discover: { steps: { research: false, need: false, concept: false }, pitched: false },
     signal: { sources: { revenue: false, invoices: false, inquiries: false }, feedOn: false },
     launch: { ready: { requirements: false, uat: false, comms: false }, launched: false },
+    network: { connected: Array.from({ length: COMPANY_COUNT }, () => false) },
     card: null,
     hint: null,
     cheers: 0,
@@ -77,7 +79,7 @@ function exitTour(state: GameState): GameState {
   }
 }
 
-/** Close the evidence card. Closing it once all three missions are done opens the finale. */
+/** Close the checkpoint card. Closing it once all four checkpoints are done opens the finale. */
 function closeCard(state: GameState): GameState {
   if (!state.card) return state
   if (allComplete(state) && state.phase !== 'finale') {
@@ -87,10 +89,13 @@ function closeCard(state: GameState): GameState {
       hint: null,
       activeMission: null,
       phase: 'finale',
-      avatarStop: 'launch',
+      // The ending is celebrated in the middle of the island.
+      avatarStop: 'center',
       cheers: state.cheers + 1,
     }
   }
+  // After the ending, closing a reopened card sends the avatar back to the celebration.
+  if (state.phase === 'finale') return { ...state, card: null, activeMission: null, avatarStop: 'center' }
   return { ...state, card: null, activeMission: null }
 }
 
@@ -128,14 +133,24 @@ export function applyMissionAction(state: GameState, action: MissionAction): Gam
       return { ...state, activeMission: null, hint: null }
     }
 
-    case 'CONNECT_COMPANY': {
-      const { index } = action
-      if (state.activeMission !== 'network') return state
-      if (!Number.isInteger(index) || index < 0 || index >= COMPANY_COUNT) return state
-      if (state.network.connected[index]) return state
-      const connected = state.network.connected.map((on, i) => on || i === index)
-      const next: GameState = { ...state, network: { connected } }
-      return connected.every(Boolean) ? completeMission(next, 'network') : next
+    case 'EXPLORE': {
+      if (state.activeMission !== 'discover' || state.discover.pitched) return state
+      if (!(action.step in state.discover.steps) || state.discover.steps[action.step]) return state
+      return {
+        ...state,
+        hint: null,
+        discover: { ...state.discover, steps: { ...state.discover.steps, [action.step]: true } },
+      }
+    }
+
+    case 'PITCH': {
+      if (state.activeMission !== 'discover' || state.discover.pitched) return state
+      const missing = missingDiscovery(state)
+      if (missing.length > 0) {
+        const attempts = state.hint?.mission === 'discover' ? state.hint.attempts + 1 : 1
+        return { ...state, hint: { mission: 'discover', missing, next: missing[0], attempts } }
+      }
+      return completeMission({ ...state, discover: { ...state.discover, pitched: true } }, 'discover')
     }
 
     case 'ACTIVATE_SOURCE': {
@@ -176,6 +191,16 @@ export function applyMissionAction(state: GameState, action: MissionAction): Gam
         return { ...state, hint: { mission: 'launch', missing, next: missing[0], attempts } }
       }
       return completeMission({ ...state, launch: { ...state.launch, launched: true } }, 'launch')
+    }
+
+    case 'CONNECT_COMPANY': {
+      const { index } = action
+      if (state.activeMission !== 'network') return state
+      if (!Number.isInteger(index) || index < 0 || index >= COMPANY_COUNT) return state
+      if (state.network.connected[index]) return state
+      const connected = state.network.connected.map((on, i) => on || i === index)
+      const next: GameState = { ...state, network: { connected } }
+      return connected.every(Boolean) ? completeMission(next, 'network') : next
     }
 
     case 'OPEN_CARD': {

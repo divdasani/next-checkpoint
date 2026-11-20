@@ -9,6 +9,7 @@ import {
   isMissionComplete,
   isTourBusy,
   isWorldFresh,
+  missingDiscovery,
   missingReadiness,
   missingSources,
   missionStatus,
@@ -19,6 +20,7 @@ import {
 import { TOUR_STEPS } from './timeline.ts'
 import {
   COMPANY_COUNT,
+  DISCOVERY_IDS,
   MISSION_IDS,
   READINESS_IDS,
   SOURCE_IDS,
@@ -45,7 +47,11 @@ const DISMISS: MissionAction = { type: 'DISMISS_CARD' }
 
 /** The clicks that finish each mission. The card is left open. */
 const SOLVE: Record<MissionId, MissionAction[]> = {
-  network: [select('network'), ...Array.from({ length: COMPANY_COUNT }, (_, index) => connect(index))],
+  discover: [
+    select('discover'),
+    ...DISCOVERY_IDS.map((step): MissionAction => ({ type: 'EXPLORE', step })),
+    { type: 'PITCH' },
+  ],
   signal: [
     select('signal'),
     ...SOURCE_IDS.map((source): MissionAction => ({ type: 'ACTIVATE_SOURCE', source })),
@@ -56,6 +62,7 @@ const SOLVE: Record<MissionId, MissionAction[]> = {
     ...READINESS_IDS.map((item): MissionAction => ({ type: 'PREPARE', item })),
     { type: 'LAUNCH' },
   ],
+  network: [select('network'), ...Array.from({ length: COMPANY_COUNT }, (_, index) => connect(index))],
 }
 
 const solve = (state: GameState, mission: MissionId) => run(state, ...SOLVE[mission])
@@ -90,6 +97,13 @@ describe('counting progress', () => {
     expect(connectedCount(solve(onMap(), 'network'))).toBe(COMPANY_COUNT)
   })
 
+  it('missingDiscovery lists the steps still to do, in the order they are shown', () => {
+    expect(missingDiscovery(onMap())).toEqual(['research', 'need', 'concept'])
+    const oneDone = run(onMap(), select('discover'), { type: 'EXPLORE', step: 'need' })
+    expect(missingDiscovery(oneDone)).toEqual(['research', 'concept'])
+    expect(missingDiscovery(solve(onMap(), 'discover'))).toEqual([])
+  })
+
   it('missingSources lists the sources still off, in the order they are shown', () => {
     expect(missingSources(onMap())).toEqual(['revenue', 'invoices', 'inquiries'])
     const oneOn = run(onMap(), select('signal'), { type: 'ACTIVATE_SOURCE', source: 'invoices' })
@@ -113,6 +127,13 @@ describe('when a mission counts as complete', () => {
     expect(isMissionComplete(solve(onMap(), 'network'), 'network')).toBe(true)
   })
 
+  it('the pitch deck needs the concept pitched, not just the three steps done', () => {
+    const stepsDone = run(onMap(), ...SOLVE.discover.slice(0, -1))
+    expect(missingDiscovery(stepsDone)).toEqual([])
+    expect(isMissionComplete(stepsDone, 'discover')).toBe(false)
+    expect(isMissionComplete(solve(onMap(), 'discover'), 'discover')).toBe(true)
+  })
+
   it('the signal needs the feed running, not just the three sources on', () => {
     const sourcesOn = run(onMap(), ...SOLVE.signal.slice(0, -1))
     expect(missingSources(sourcesOn)).toEqual([])
@@ -129,25 +150,47 @@ describe('when a mission counts as complete', () => {
 
   it('finishing one mission does not complete the others', () => {
     const state = solve(onMap(), 'signal')
-    expect(MISSION_IDS.map((id) => isMissionComplete(state, id))).toEqual([false, true, false])
+    expect(MISSION_IDS.map((id) => isMissionComplete(state, id))).toEqual([false, true, false, false])
   })
 
-  it('completedMissions, completedCount, and allComplete follow the missions in their fixed order', () => {
+  it('the missions are listed in trail order: Discover, Build, Ship, Scale', () => {
+    expect(MISSION_IDS).toEqual(['discover', 'signal', 'launch', 'network'])
+  })
+
+  it('completedMissions, completedCount, and allComplete follow the missions in trail order', () => {
     const none = onMap()
     expect(completedMissions(none)).toEqual([])
     expect(completedCount(none)).toBe(0)
     expect(allComplete(none)).toBe(false)
 
-    // Finished out of order on purpose: the list still comes back in mission order.
-    const two = solveAndClose(solveAndClose(none, 'launch'), 'network')
-    expect(completedMissions(two)).toEqual(['network', 'launch'])
+    // Finished out of order on purpose: the list still comes back in trail order.
+    const two = solveAndClose(solveAndClose(none, 'network'), 'signal')
+    expect(completedMissions(two)).toEqual(['signal', 'network'])
     expect(completedCount(two)).toBe(2)
     expect(allComplete(two)).toBe(false)
 
-    const three = solve(two, 'signal')
-    expect(completedMissions(three)).toEqual(['network', 'signal', 'launch'])
+    const three = solveAndClose(two, 'discover')
+    expect(completedMissions(three)).toEqual(['discover', 'signal', 'network'])
     expect(completedCount(three)).toBe(3)
-    expect(allComplete(three)).toBe(true)
+    expect(allComplete(three)).toBe(false)
+
+    const four = solve(three, 'launch')
+    expect(completedMissions(four)).toEqual(['discover', 'signal', 'launch', 'network'])
+    expect(completedCount(four)).toBe(4)
+    expect(allComplete(four)).toBe(true)
+  })
+
+  it('the passport count goes from 0 to 4, one stamp per finished checkpoint, in any order', () => {
+    // The passport, the cards, and the ending all read completedCount, so this is the one
+    // number behind "0/4" to "4/4".
+    let state = onMap()
+    const counts = [completedCount(state)]
+    for (const mission of ['launch', 'discover', 'network', 'signal'] as const) {
+      state = solveAndClose(state, mission)
+      counts.push(completedCount(state))
+    }
+    expect(counts).toEqual([0, 1, 2, 3, 4])
+    expect(allComplete(state)).toBe(true)
   })
 })
 
@@ -178,12 +221,15 @@ describe('isWorldFresh: has anything in the world been touched?', () => {
   // Hand-made states, one change each, to show that every kind of progress counts by
   // itself. (Through real play several of them always change together.)
   const base = onMap()
-  const { signal, launch } = base
+  const { discover, signal, launch } = base
   const oneConnected = base.network.connected.map((_, index) => index === 0)
   const touched: [what: string, state: GameState][] = [
     ['a selected destination', { ...base, activeMission: 'signal' }],
     ['an open card', { ...base, card: 'network' }],
     ['the avatar away from home', { ...base, avatarStop: 'launch' }],
+    ['the avatar turned to the first checkpoint', { ...base, avatarStop: 'discover' }],
+    ['one step done', { ...base, discover: { ...discover, steps: { ...discover.steps, need: true } } }],
+    ['the concept pitched', { ...base, discover: { ...discover, pitched: true } }],
     ['one connected company', { ...base, network: { connected: oneConnected } }],
     ['one source switched on', { ...base, signal: { ...signal, sources: { ...signal.sources, invoices: true } } }],
     ['the feed running', { ...base, signal: { ...signal, feedOn: true } }],
@@ -198,12 +244,12 @@ describe('isWorldFresh: has anything in the world been touched?', () => {
 
 describe('missionStatus: the word shown next to each mission', () => {
   it('is "todo" for missions that are not selected or finished', () => {
-    expect(MISSION_IDS.map((id) => missionStatus(onMap(), id))).toEqual(['todo', 'todo', 'todo'])
+    expect(MISSION_IDS.map((id) => missionStatus(onMap(), id))).toEqual(['todo', 'todo', 'todo', 'todo'])
   })
 
   it('is "active" only for the selected, unfinished mission', () => {
     const state = run(onMap(), select('signal'))
-    expect(MISSION_IDS.map((id) => missionStatus(state, id))).toEqual(['todo', 'active', 'todo'])
+    expect(MISSION_IDS.map((id) => missionStatus(state, id))).toEqual(['todo', 'active', 'todo', 'todo'])
   })
 
   it('is "done" for a finished mission, whether its card is open, closed, or it is selected again', () => {
@@ -212,7 +258,7 @@ describe('missionStatus: the word shown next to each mission', () => {
     const closed = run(cardOpen, DISMISS)
     expect(missionStatus(closed, 'network')).toBe('done')
     const elsewhere = run(closed, select('launch'))
-    expect(MISSION_IDS.map((id) => missionStatus(elsewhere, id))).toEqual(['done', 'todo', 'active'])
+    expect(MISSION_IDS.map((id) => missionStatus(elsewhere, id))).toEqual(['todo', 'todo', 'active', 'done'])
   })
 })
 
@@ -247,7 +293,7 @@ describe('panelKind: the one panel on screen', () => {
   })
 
   it('card: the last card is read before the finale appears', () => {
-    const lastCard = solve(solveAndClose(solveAndClose(onMap(), 'network'), 'signal'), 'launch')
+    const lastCard = solve(solveAndClose(solveAndClose(solveAndClose(onMap(), 'discover'), 'signal'), 'launch'), 'network')
     expect(panelKind(lastCard)).toBe('card')
   })
 
@@ -328,25 +374,26 @@ describe('focusMission: the zone the camera may move toward', () => {
   it('follows the guided sequence the same way: each mission in turn, released when its card opens', () => {
     const focused = replayTour(createInitialState({ mode: 'tour' })).map(focusMission)
     const order = focused.filter((mission, index) => mission !== focused[index - 1])
-    expect(order).toEqual([null, 'network', null, 'signal', null, 'launch', null])
+    expect(order).toEqual([null, 'discover', null, 'signal', null, 'launch', null, 'network', null])
   })
 })
 
 describe('tourChapter: how far the guided sequence has come', () => {
   const chapters = () => replayTour(createInitialState({ mode: 'tour' })).map(tourChapter)
 
-  it('starts at 0, never goes backwards, and ends at 4', () => {
+  it('starts at 0, never goes backwards, and ends at 5', () => {
     const seen = chapters()
     expect(seen[0]).toBe(0)
     for (let index = 1; index < seen.length; index++) {
       expect(seen[index], `after step ${index - 1}`).toBeGreaterThanOrEqual(seen[index - 1])
     }
-    expect(seen[seen.length - 1]).toBe(4)
+    expect(seen[seen.length - 1]).toBe(5)
   })
 
   it('passes through every chapter, one at a time, and fits the chapter count', () => {
     const seen = chapters()
-    expect([...new Set(seen)]).toEqual([0, 1, 2, 3, 4])
+    expect([...new Set(seen)]).toEqual([0, 1, 2, 3, 4, 5])
+    expect(TOUR_CHAPTER_COUNT).toBe(6)
     expect(Math.max(...seen)).toBe(TOUR_CHAPTER_COUNT - 1)
   })
 
@@ -357,23 +404,25 @@ describe('tourChapter: how far the guided sequence has come', () => {
       if (!state) throw new Error('The guided sequence never reached the expected moment.')
       return tourChapter(state)
     }
-    expect(at((s) => s.activeMission === 'network')).toBe(1)
-    expect(at((s) => s.card === 'network')).toBe(1)
+    expect(at((s) => s.activeMission === 'discover')).toBe(1)
+    expect(at((s) => s.card === 'discover')).toBe(1)
     // The sequence goes straight from a card to the next mission. A visitor can also close the
     // card first, and with no mission chosen yet that still counts as chapter 1.
-    const cardOpen = states.find((s) => s.card === 'network')
+    const cardOpen = states.find((s) => s.card === 'discover')
     expect(cardOpen && tourChapter({ ...cardOpen, card: null, activeMission: null })).toBe(1)
     expect(at((s) => s.activeMission === 'signal')).toBe(2)
     expect(at((s) => s.card === 'signal')).toBe(2)
     expect(at((s) => s.activeMission === 'launch')).toBe(3)
     expect(at((s) => s.card === 'launch')).toBe(3)
-    expect(at((s) => s.phase === 'finale')).toBe(4)
+    expect(at((s) => s.activeMission === 'network')).toBe(4)
+    expect(at((s) => s.card === 'network')).toBe(4)
+    expect(at((s) => s.phase === 'finale')).toBe(5)
   })
 
   it('stays on the last chapter when a card is reopened after the sequence has finished', () => {
     const done = replayTour(createInitialState({ mode: 'tour' })).at(-1)
     expect(done?.tour.status).toBe('done')
-    if (done) expect(tourChapter(run(done, select('network')))).toBe(4)
+    if (done) expect(tourChapter(run(done, select('network')))).toBe(5)
   })
 })
 

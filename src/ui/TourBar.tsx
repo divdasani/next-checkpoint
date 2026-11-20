@@ -16,7 +16,7 @@ interface TourBarProps {
 
 /**
  * Controls for the guided sequence, shared by Guided tour and Film mode:
- * where the sequence is (chapter 1 to 5), Pause or Resume, Restart, and a way out.
+ * where the sequence is (chapter 1 to 6), Pause or Resume, Restart, and a way out.
  *
  * The buttons only send TOUR_PAUSE, TOUR_PLAY, TOUR_RESTART, and EXIT_TOUR. The timeline
  * itself lives in state/timeline.ts and is played by state/useTourRunner.ts.
@@ -67,7 +67,7 @@ export function TourBar({ revealed = false }: TourBarProps) {
   const name = mode === 'film' ? 'Film mode' : content.intro.tourLabel
   const paused = status === 'paused'
   const done = status === 'done'
-  // tourChapter counts from 0 (the opening) to 4 (the finale).
+  // tourChapter counts from 0 (the opening) to 5 (the finale).
   const chapter = tourChapter(state)
   const reached = done ? TOUR_CHAPTER_COUNT : chapter
   const position = Math.min(chapter + 1, TOUR_CHAPTER_COUNT)
@@ -91,7 +91,7 @@ export function TourBar({ revealed = false }: TourBarProps) {
             <span
               key={index}
               className="tourbar__segment"
-              // Chapters 2 to 4 are the three missions, so they take the mission colors.
+              // Chapters 2 to 5 are the four checkpoints, so they take their colors.
               data-mission={MISSION_IDS[index - 1]}
               data-state={index < reached ? 'past' : index === reached ? 'now' : 'next'}
             />

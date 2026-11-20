@@ -1,16 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import { COMPANY_COUNT, MISSION_IDS, READINESS_IDS, SOURCE_IDS, type MissionId } from '../state/types.ts'
+import {
+  COMPANY_COUNT,
+  DISCOVERY_IDS,
+  MISSION_IDS,
+  READINESS_IDS,
+  SOURCE_IDS,
+  type MissionId,
+} from '../state/types.ts'
 import { content, missionContent } from './content.ts'
 import { renderStaticResume } from './resumeHtml.ts'
 
 // The safety net for the words on the site. It checks three things:
-//  1. The "Real experience" cards say exactly what the brief says.
+//  1. The checkpoint cards say exactly what was confirmed: the statements, the names of
+//     the four checkpoints and their stamps, and the skills each one unlocks.
 //  2. Nothing private ships: no phone number, no email address, no source resume file.
 //  3. The wording stays honest: the gaming project is a concept, the dollar figures are
-//     billing scope and revenue accommodated, and nothing suggests a job or offer at Roblox.
+//     billing scope and revenue accommodated, and no sentence states a job or offer at
+//     Roblox. One sticker, "Hired!", is the exception Annika chose. It has its own test.
 // When a check fails after an edit to content.ts, the edit is what needs a second look.
 
 // Every piece of text in the content file ------------------------------------------
+
+/**
+ * A headline result on a checkpoint card: { value, label } and nothing else. The card shows
+ * the value large with the label beside it, so the two are read, and checked, as one statement.
+ */
+function isMetric(value: object): value is { value: string; label: string } {
+  const fields = value as Record<string, unknown>
+  return Object.keys(fields).length === 2 && typeof fields.value === 'string' && typeof fields.label === 'string'
+}
 
 /** Walk the content object and gather every string. Functions are listed, not called. */
 function gather(value: unknown, path = 'content', strings: string[] = [], functions: string[] = []) {
@@ -18,32 +36,41 @@ function gather(value: unknown, path = 'content', strings: string[] = [], functi
   else if (typeof value === 'function') functions.push(path)
   else if (Array.isArray(value)) value.forEach((item, index) => gather(item, `${path}[${index}]`, strings, functions))
   else if (typeof value === 'object' && value !== null) {
-    for (const [key, inner] of Object.entries(value)) gather(inner, `${path}.${key}`, strings, functions)
+    if (isMetric(value)) strings.push(`${value.value} ${value.label}`)
+    else for (const [key, inner] of Object.entries(value)) gather(inner, `${path}.${key}`, strings, functions)
   }
   return { strings, functions }
 }
 
 const gathered = gather(content)
+const discoveryLabels = DISCOVERY_IDS.map((id) => content.missions.discover.steps[id])
 const sourceLabels = SOURCE_IDS.map((id) => content.missions.signal.sources[id])
 const readinessLabels = READINESS_IDS.map((id) => content.missions.launch.readiness[id])
+/** Every number of stamps the passport can hold. */
+const STAMP_COUNTS = [0, 1, 2, 3, 4]
 
 /** The few lines that are built by small functions, run with every input the site can give them. */
 const builtText = [
-  ...[0, 1, 2, 3].map((done) => content.overview.progress(done)),
-  ...Array.from({ length: COMPANY_COUNT + 1 }, (_, connected) => content.missions.network.progress(connected)),
+  ...STAMP_COUNTS.map((done) => content.overview.progress(done)),
+  ...STAMP_COUNTS.map((done) => content.trail.count(done)),
+  ...MISSION_IDS.map((id) => content.trail.stampEarned(missionContent(id).checkpoint.stamp)),
+  content.missions.discover.blocked(discoveryLabels),
+  ...discoveryLabels.map((label) => content.missions.discover.nextAction(label)),
   content.missions.signal.blocked(sourceLabels),
   ...sourceLabels.map((label) => content.missions.signal.nextAction(label)),
   content.missions.launch.blocked(readinessLabels),
   ...readinessLabels.map((label) => content.missions.launch.nextAction(label)),
+  ...Array.from({ length: COMPANY_COUNT + 1 }, (_, connected) => content.missions.network.progress(connected)),
 ]
 
 const ALL_TEXT = [...gathered.strings, ...builtText]
 const sentences = (texts: readonly string[]) => texts.flatMap((text) => text.split(/(?<=[.!?;])\s+/))
 const ALL_SENTENCES = sentences(ALL_TEXT)
 
-/** The career claims: the evidence cards, the finale, and the whole resume. */
+/** The career claims: the checkpoint cards (statement, note, problem, results), the finale, and the whole resume. */
 const FACTUAL_TEXT = [
-  ...MISSION_IDS.flatMap((id) => [missionContent(id).evidence.quote, missionContent(id).evidence.note]),
+  ...MISSION_IDS.flatMap((id) => [missionContent(id).evidence.quote, missionContent(id).evidence.note ?? '']),
+  ...MISSION_IDS.flatMap((id) => gather(missionContent(id).checkpoint).strings),
   ...gather(content.finale).strings,
   ...gather(content.resume).strings,
 ]
@@ -53,62 +80,173 @@ const entryFor = (org: string) => resumeEntries.find((entry) => entry.org === or
 
 // 1. The cards ---------------------------------------------------------------------
 
-// Copied character for character from brief/01-build-brief.md.
-const BRIEF_EVIDENCE: Record<MissionId, { title: string; quote: string; labels: [string, string] }> = {
-  network: {
-    title: 'Eight Worlds, One System',
+// The statements for the signal station, the launch arch, and the hub are copied character
+// for character from brief/01-build-brief.md. The statement for the pitch deck was added
+// with the trail on 19 November 2026: it is the resume's 3 Day Startup bullet in the first person.
+const CONFIRMED_STATEMENTS: Record<MissionId, { title: string; quote: string }> = {
+  discover: {
+    title: 'Spot the Gap',
     quote:
-      'At Microsoft, I built a framework to centralize $700M in acquisition billing across eight companies. It enabled an additional $360M in revenue to be absorbed within three months.',
-    labels: ['Scalable processes', 'Cross-functional execution'],
+      'At 3 Day Startup, I researched gaps in online gaming and developed an app concept to connect underserved players, including people facing accessibility or language barriers. I pitched the concept to investors and placed second.',
   },
   signal: {
     title: 'Find the Signal',
     quote:
       'I interviewed users to understand reporting needs, then designed a self-service Power BI dashboard across eight acquired companies. It eliminated approximately six hours of weekly manual reporting.',
-    labels: ['User discovery', 'Analytics'],
   },
   launch: {
     title: 'Launch Day',
     quote:
       'I translated business needs into engineering requirements and acceptance criteria, and coordinated roadmaps, dependencies, testing, and communications for two global tax-rate change rollouts.',
-    labels: ['Acceptance criteria', 'Launch execution'],
+  },
+  network: {
+    title: 'Eight Worlds, One System',
+    quote:
+      'At Microsoft, I built a framework to centralize $700M in acquisition billing across eight companies. It enabled an additional $360M in revenue to be absorbed within three months.',
   },
 }
 
-describe('the three missions and their Real experience cards', () => {
-  it.each(MISSION_IDS)('%s: the card quote matches the brief exactly', (id) => {
-    expect(content.missions[id].evidence.quote).toBe(BRIEF_EVIDENCE[id].quote)
+// From Annika's requirements for the trail (19 November 2026): the four checkpoints, the word
+// on each stamp, where the work happened, and the skills each checkpoint unlocks.
+const CONFIRMED_CHECKPOINTS: Record<MissionId, { name: string; stamp: string; source: string; skills: string[] }> = {
+  discover: { name: 'Discover', stamp: 'Discovery', source: '3 Day Startup', skills: ['User Research', 'Product Ideation'] },
+  signal: {
+    name: 'Build',
+    stamp: 'Builder',
+    source: 'Microsoft',
+    skills: ['Requirements Definition', 'Power BI', 'Success Metrics'],
+  },
+  launch: {
+    name: 'Ship',
+    stamp: 'Launch',
+    source: 'Microsoft',
+    skills: ['User Acceptance Testing', 'Roadmap Planning', 'Cross-Functional Execution'],
+  },
+  network: { name: 'Scale', stamp: 'Scale', source: 'Microsoft', skills: ['Scalable Processes', 'Operational Strategy'] },
+}
+
+describe('the four checkpoints and their cards', () => {
+  it.each(MISSION_IDS)('%s: the card statement matches the confirmed wording exactly', (id) => {
+    expect(content.missions[id].evidence.quote).toBe(CONFIRMED_STATEMENTS[id].quote)
   })
 
-  it.each(MISSION_IDS)('%s: exactly the two supporting labels from the brief', (id) => {
-    expect(content.missions[id].evidence.labels).toEqual(BRIEF_EVIDENCE[id].labels)
-    expect(content.missions[id].evidence.labels).toHaveLength(2)
+  it.each(MISSION_IDS)('%s: the mission keeps its title', (id) => {
+    expect(content.missions[id].title).toBe(CONFIRMED_STATEMENTS[id].title)
   })
 
-  it.each(MISSION_IDS)('%s: the mission keeps its title from the brief', (id) => {
-    expect(content.missions[id].title).toBe(BRIEF_EVIDENCE[id].title)
+  it('the pitch deck statement says nothing beyond the 3 Day Startup bullet on the resume', () => {
+    const bullet = entryFor('3 Day Startup')?.bullets[0] ?? ''
+    const statement = content.missions.discover.evidence.quote
+    const facts = [
+      /researched gaps in online gaming/i,
+      /developed an app concept to connect underserved players/i,
+      /including people facing accessibility or language barriers/i,
+      /pitched the concept to investors/i,
+      /placed second/i,
+    ]
+    for (const fact of facts) {
+      expect(bullet, String(fact)).toMatch(fact)
+      expect(statement, String(fact)).toMatch(fact)
+    }
+    // Take those facts away and only the framing is left: where it happened and who did it.
+    const framing = facts.reduce((text, fact) => text.replace(fact, ''), statement)
+    expect(framing.replace(/[\s,.;]+/g, ' ').trim()).toBe('At 3 Day Startup I and I and')
+  })
+
+  it.each(MISSION_IDS)('%s: the checkpoint keeps its name, the word on its stamp, and where the work happened', (id) => {
+    const { name, stamp, source } = missionContent(id).checkpoint
+    expect({ name, stamp, source }).toEqual({
+      name: CONFIRMED_CHECKPOINTS[id].name,
+      stamp: CONFIRMED_CHECKPOINTS[id].stamp,
+      source: CONFIRMED_CHECKPOINTS[id].source,
+    })
+  })
+
+  it.each(MISSION_IDS)('%s: unlocks exactly the confirmed skills', (id) => {
+    expect(missionContent(id).checkpoint.skills).toEqual(CONFIRMED_CHECKPOINTS[id].skills)
+  })
+
+  it('the trail runs Discover, Build, Ship, Scale, and every stamp has its own word', () => {
+    expect(MISSION_IDS.map((id) => missionContent(id).checkpoint.name)).toEqual(['Discover', 'Build', 'Ship', 'Scale'])
+    expect(new Set(MISSION_IDS.map((id) => missionContent(id).checkpoint.stamp)).size).toBe(MISSION_IDS.length)
+  })
+
+  it('every checkpoint states the problem and at least one result, and no skill twice', () => {
+    const skills = MISSION_IDS.flatMap((id) => missionContent(id).checkpoint.skills)
+    expect(new Set(skills).size).toBe(skills.length)
+    for (const id of MISSION_IDS) {
+      const { challenge, metrics } = missionContent(id).checkpoint
+      expect(challenge.length, id).toBeGreaterThan(0)
+      expect(metrics.length, id).toBeGreaterThan(0)
+      for (const metric of metrics) {
+        expect(metric.value.length, id).toBeGreaterThan(0)
+        expect(metric.label.length, id).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('the headline results are the confirmed ones', () => {
+    const results = (id: MissionId) => missionContent(id).checkpoint.metrics.map((metric) => `${metric.value} ${metric.label}`)
+    expect(results('discover')).toEqual(['2nd place for the concept, pitched to investors'])
+    // "Approximately six hours" on the resume: the "~" keeps the approximation.
+    expect(results('signal')).toEqual(['~6 hours of manual reporting saved every week', '8 acquired companies supported'])
+    expect(results('launch')).toEqual(['2 global launches of tax-rate changes, coordinated across teams'])
+    expect(results('network')).toEqual([
+      '$700M in acquisition billing centralized across 8 companies',
+      '+$360M in emergent revenue absorbed within 3 months',
+    ])
+  })
+
+  it('the partner teams at the launch arch are the four the resume names', () => {
+    const bullet = entryFor('Microsoft')?.bullets.find((text) => /tax-rate/.test(text)) ?? ''
+    expect(content.missions.launch.checkpoint.teams).toEqual(['Engineering', 'Tax', 'Sales', 'Business'])
+    for (const team of content.missions.launch.checkpoint.teams ?? []) expect(bullet.toLowerCase()).toContain(team.toLowerCase())
   })
 
   it('the cards are labeled "Real experience"', () => {
     expect(content.cardLabels.realExperience).toBe('Real experience')
   })
 
-  it('missions are numbered 1 to 3 in play order, and missionContent finds each by id', () => {
-    expect(MISSION_IDS.map((id) => missionContent(id).number)).toEqual([1, 2, 3])
+  it('missions are numbered 1 to 4 in trail order, and missionContent finds each by id', () => {
+    expect(MISSION_IDS.map((id) => missionContent(id).number)).toEqual([1, 2, 3, 4])
     for (const id of MISSION_IDS) {
       expect(missionContent(id)).toBe(content.missions[id])
       expect(missionContent(id).id).toBe(id)
     }
   })
 
-  it('every mission says in plain words that the mini-game is an illustration', () => {
+  it('every mission says what to do, and none carries an "Illustration only" line', () => {
+    // The brief gave each mission a line saying that the mini-game is an illustration.
+    // Annika asked for all four to be removed on 19 November 2026.
     for (const id of MISSION_IDS) {
-      expect(missionContent(id).illustrationNote, id).toMatch(/illustration|represent/i)
       expect(missionContent(id).objective.length, id).toBeGreaterThan(0)
+      expect(missionContent(id).how.length, id).toBeGreaterThan(0)
+      expect(Object.keys(missionContent(id)), id).not.toContain('illustrationNote')
     }
+    expect(ALL_TEXT.filter((text) => /\billustrati(?:on|ve)\b/i.test(text))).toEqual([])
   })
 
-  it('mission one uses eight generic company labels, not real or invented company names', () => {
+  it('the lines under the statements are the ones Annika asked for', () => {
+    // 19 November 2026: she removed the lines under the Discover and Scale statements,
+    // and supplied the wording of the one under Build herself. The statements above them
+    // still say "concept", "billing", and "absorbed" in their own words (checked below).
+    expect(MISSION_IDS.map((id) => [id, missionContent(id).evidence.note])).toEqual([
+      ['discover', undefined],
+      [
+        'signal',
+        'The real dashboard combined revenue, invoice volume, and customer inquiries to proactively spot risks and trends.',
+      ],
+      ['launch', 'Both rollouts were coordinated with engineering, tax, sales, and business partners.'],
+      ['network', undefined],
+    ])
+  })
+
+  it('the pitch deck names its three steps', () => {
+    expect(DISCOVERY_IDS.map((id) => content.missions.discover.steps[id])).toEqual(['Research', 'Unmet need', 'Concept'])
+    expect(Object.keys(content.missions.discover.steps).sort()).toEqual([...DISCOVERY_IDS].sort())
+  })
+
+  it('the hub uses eight generic company labels, not real or invented company names', () => {
     const labels = content.missions.network.companyLabels
     expect(labels).toHaveLength(COMPANY_COUNT)
     expect(new Set(labels).size).toBe(COMPANY_COUNT)
@@ -117,7 +255,7 @@ describe('the three missions and their Real experience cards', () => {
     expect(new Set(labels.map((label) => label.split(' ')[0])).size).toBe(1)
   })
 
-  it('mission two names the three data sources from the brief', () => {
+  it('the signal station names the three data sources from the brief', () => {
     expect(SOURCE_IDS.map((id) => content.missions.signal.sources[id])).toEqual([
       'Revenue',
       'Invoice volume',
@@ -126,7 +264,7 @@ describe('the three missions and their Real experience cards', () => {
     expect(Object.keys(content.missions.signal.sources).sort()).toEqual([...SOURCE_IDS].sort())
   })
 
-  it('mission three names the three readiness checks from the brief', () => {
+  it('the launch arch names the three readiness checks from the brief', () => {
     expect(READINESS_IDS.map((id) => content.missions.launch.readiness[id])).toEqual([
       'Requirements',
       'User acceptance testing',
@@ -136,7 +274,13 @@ describe('the three missions and their Real experience cards', () => {
   })
 
   it('a "something is missing" message names exactly the missing steps and the next one', () => {
-    const { signal, launch } = content.missions
+    const { discover, signal, launch } = content.missions
+    const pitchHint = discover.blocked([discoveryLabels[1], discoveryLabels[2]])
+    expect(pitchHint).toContain(discoveryLabels[1])
+    expect(pitchHint).toContain(discoveryLabels[2])
+    expect(pitchHint).not.toContain(discoveryLabels[0])
+    expect(discover.nextAction(discoveryLabels[0])).toContain(discoveryLabels[0])
+
     const feedHint = signal.blocked([sourceLabels[0], sourceLabels[2]])
     expect(feedHint).toContain(sourceLabels[0])
     expect(feedHint).toContain(sourceLabels[2])
@@ -153,6 +297,38 @@ describe('the three missions and their Real experience cards', () => {
   it('progress lines report the number they are given', () => {
     expect(content.overview.progress(2)).toContain('2')
     expect(content.missions.network.progress(5)).toContain('5')
+  })
+})
+
+describe('the trail and its passport', () => {
+  it('names the curator and the themes of the trail', () => {
+    expect(content.trail.byline).toBe('Trail by Annika Dasani')
+    expect(content.trail.themes).toBe('Product · Operations · Gaming · Technology')
+    expect(content.trail.name).toBe("Annika Dasani's Career Trail")
+  })
+
+  it('says what the site demonstrates, in the confirmed words', () => {
+    expect(content.trail.demo).toBe('Built to demonstrate Roblox Trails, the product idea from my APM application.')
+  })
+
+  it('counts stamps from 0 of 4 to 4 of 4', () => {
+    expect(STAMP_COUNTS.map((done) => content.trail.count(done))).toEqual(['0/4', '1/4', '2/4', '3/4', '4/4'])
+    for (const done of STAMP_COUNTS) expect(content.overview.progress(done)).toMatch(new RegExp(`^${done} of 4\\b`))
+    expect(content.trail.completeCount).toBe('4 of 4 checkpoints completed')
+  })
+
+  it('names each stamp as it is earned', () => {
+    expect(MISSION_IDS.map((id) => content.trail.stampEarned(missionContent(id).checkpoint.stamp))).toEqual([
+      'Discovery stamp earned',
+      'Builder stamp earned',
+      'Launch stamp earned',
+      'Scale stamp earned',
+    ])
+  })
+
+  it('describes the trail without any popularity figures: no followers, ratings, likes, or reviews', () => {
+    const profile = content.trail.profile.map((item) => `${item.term}: ${item.detail}`)
+    expect(profile).toEqual(['Trail: How I Got Here', 'Stops: 4', 'Theme: Career journey'])
   })
 })
 
@@ -390,20 +566,29 @@ describe('honest wording', () => {
     expect([...gathered.functions].sort()).toEqual(
       [
         'content.overview.progress',
-        'content.missions.network.progress',
+        'content.trail.count',
+        'content.trail.stampEarned',
+        'content.missions.discover.blocked',
+        'content.missions.discover.nextAction',
         'content.missions.signal.blocked',
         'content.missions.signal.nextAction',
         'content.missions.launch.blocked',
         'content.missions.launch.nextAction',
+        'content.missions.network.progress',
       ].sort(),
     )
     expect(ALL_TEXT.length).toBeGreaterThan(60)
   })
 
   describe('the gaming project was a concept and a pitch, never a built app', () => {
-    it('the finale calls it a concept that was pitched', () => {
-      expect(content.finale.gaming).toMatch(/\bconcept\b/i)
-      expect(content.finale.gaming).toMatch(/\bpitch/i)
+    it('the pitch deck card calls it a concept that was pitched', () => {
+      // The line under it ("It was not built or released.") was removed at Annika's request.
+      // The statement itself has to carry the precision, so it is checked word by word.
+      const { evidence, checkpoint } = content.missions.discover
+      expect(evidence.quote).toMatch(/\bapp concept\b/i)
+      expect(evidence.quote).toMatch(/\bpitched the concept\b/i)
+      // The headline result is about the concept as well.
+      expect(checkpoint.metrics.map((metric) => metric.label).join(' ')).toMatch(/\bconcept\b/i)
     })
 
     it('the resume calls it a concept, in the summary and under 3 Day Startup', () => {
@@ -415,7 +600,11 @@ describe('honest wording', () => {
     })
 
     it('wherever the word "app" or "gaming" appears, the same sentence says "concept"', () => {
-      const mentions = sentencesWith(/\bapps?\b|\bgaming\b/i)
+      // One line is not a sentence about the project: the themes under the trail's byline
+      // ("Product · Operations · Gaming · Technology"), which Annika asked for on
+      // 19 November 2026. It lists interests and claims nothing, and it is pinned word for
+      // word above, so nothing else can slip through under its name.
+      const mentions = sentencesWith(/\bapps?\b|\bgaming\b/i).filter((sentence) => sentence !== content.trail.themes)
       expect(mentions.length).toBeGreaterThanOrEqual(3)
       for (const sentence of mentions) expect(sentence).toMatch(/\bconcept\b/i)
     })
@@ -477,7 +666,7 @@ describe('honest wording', () => {
     })
   })
 
-  describe('no offer and no job at Roblox is implied', () => {
+  describe('no sentence states an offer or a job at Roblox', () => {
     it('she is described as an applicant, and the finale says she is applying', () => {
       expect(content.identity.role).toBe('Associate Product Manager applicant')
       expect(content.finale.applying).toMatch(/\bapplying\b/i)
@@ -510,8 +699,33 @@ describe('honest wording', () => {
       ['a job offer', /\b(?:an|the|my|a|job) offer\b|\boffer (?:from|letter)\b|\boffered (?:me|a|the)\b/i],
       ['an accepted role', /\baccepted (?:an|the|my|a)\b|\bsigned (?:with|on)\b|\bstart(?:ing)? at roblox\b/i],
       ['an official Roblox page', /\bofficial roblox\b|\broblox careers\b|\broblox recruiting\b/i],
+      // The stamp space for Roblox at the end of the trail is empty. No wording may fill it.
+      ['a Roblox stamp that was earned', /\broblox stamp\b|\bstamp(?:ed)? (?:by|from|at) roblox\b|\bearned (?:at|from) roblox\b/i],
     ])('never says: %s', (_phrase, pattern) => {
       expect(sentencesWith(pattern)).toEqual([])
+    })
+
+    it('the one "Hired!" is the sticker Annika asked for, and the words around it still say she is applying', () => {
+      // 19 November 2026: Annika asked for a "Hired!" sticker on the Roblox space at the end
+      // of the trail. Asked first, she said she has not been hired and wants it as a wish,
+      // with the "applying" line kept beside it. So the sticker is allowed, and only the
+      // sticker: no sentence may say she was hired, the space under it stays "Not stamped
+      // yet", and the role line and the finale keep saying that she is an applicant.
+      expect(content.trail.sticker).toBe('Hired!')
+      expect(ALL_TEXT.filter((text) => /^\W*hired\W*$/i.test(text))).toEqual([content.trail.sticker])
+      expect(
+        sentencesWith(/\b(?:was|were|been|be|got|get|am|is|i'm|she's) hired\b|\bhired (?:me|her|annika)\b|\bhired (?:by|at)\b/i),
+      ).toEqual([])
+      expect(content.trail.notStamped).toBe('Not stamped yet')
+      expect(content.finale.applying).toBe("Applying for Roblox's Associate Product Manager role.")
+      expect(content.identity.role).toBe('Associate Product Manager applicant')
+    })
+
+    it('Roblox Trails is named as the product idea in her application, not as a Roblox product', () => {
+      const mentions = sentencesWith(/roblox trails/i)
+      expect(mentions).toEqual([content.trail.demo])
+      expect(content.trail.demo).toMatch(/\bproduct idea\b/i)
+      expect(content.trail.demo).toMatch(/\bapplication\b/i)
     })
   })
 
@@ -535,6 +749,8 @@ describe('honest wording', () => {
       ['testimonials', /\btestimonial|\bquote from\b/i],
       ['percentages', /\d\s?%|\bpercent\b/i],
       ['user counts', /\b\d[\d,.]*\+?\s*(?:k\s+)?(?:users|players|customers|visitors|downloads)\b/i],
+      // A Trail could show how popular it is. This one has no such numbers, so none may be made up.
+      ['popularity figures', /\bfollowers?\b|\bratings?\b|\brated\b|\blikes\b|\breviews?\b|\bcompleted by\b/i],
     ])('never mentions: %s', (_claim, pattern) => {
       expect(sentencesWith(pattern)).toEqual([])
     })
@@ -549,6 +765,20 @@ describe('honest wording', () => {
       const numbers = FACTUAL_TEXT.flatMap((text) => text.match(/\d+(?:[.,]\d+)*/g) ?? [])
       expect(numbers.length).toBeGreaterThan(10)
       expect(numbers.filter((number) => !confirmed.has(number))).toEqual([])
+    })
+
+    it('every skill a checkpoint unlocks is on the source resume or was confirmed by Annika', () => {
+      const sourceSkills = [...content.resume.skills]
+      // Confirmed on 19 November 2026, for the checkpoint cards only: two skills that are not
+      // on the resume, and two that the brief already used as card labels for the hub.
+      const confirmed = ['Product Ideation', 'Operational Strategy', 'Cross-Functional Execution', 'Scalable Processes']
+      for (const id of MISSION_IDS) {
+        for (const skill of missionContent(id).checkpoint.skills) {
+          expect([...sourceSkills, ...confirmed], `${id}: ${skill}`).toContain(skill)
+        }
+      }
+      // They stay on the cards: the resume's own list is checked against the source below.
+      for (const skill of confirmed) expect(content.resume.skills).not.toContain(skill)
     })
 
     it('the skills are the ones on the source resume', () => {

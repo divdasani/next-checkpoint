@@ -1,6 +1,8 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   The pieces of the interface that sit around the world: top bar, mission chips,
-   destination pins, tour controls, the Film mode tap layer, and the WebGL notice.
+   The pieces of the interface that sit around the world: top bar, the passport strip
+   (four stamp spaces that double as mission chips), destination pins, tour controls,
+   the Film mode tap layer, and the WebGL notice. The stamps themselves, the passport
+   button, and the passport view are in passport.css.
 
    How the responsive parts work:
    - Sizes are in rem, so everything here grows with the root font size, which
@@ -200,7 +202,7 @@
   }
 }
 
-/* ── Footer: tour controls, mission chips, progress line, credit ──────────── */
+/* ── Footer: tour controls, passport strip, progress line, credit ─────────── */
 
 .hud__foot {
   container: foot / inline-size;
@@ -210,21 +212,27 @@
   gap: 0.375rem 1rem;
 }
 
+/* The passport strip: the passport button, then the four stamp spaces. */
 .chips {
   flex: 1 0 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 0.375rem;
   min-width: 0;
 }
 
 /* On wide screens the chips keep their natural width and line up from the left. */
 .chips__list {
+  flex: 0 1 auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, max-content));
+  grid-template-columns: repeat(4, minmax(0, max-content));
   justify-content: start;
   gap: 0.375rem;
+  min-width: 0;
   pointer-events: auto;
 }
 
-/* Compact chip: number and status on the first line, the short title below. */
+/* Compact chip: stamp space and status on the first line, the checkpoint's name below. */
 .chips__chip {
   --chip-ring: inset 0 0 0 0 var(--ink);
   display: grid;
@@ -237,7 +245,7 @@
   width: 100%;
   min-height: var(--tap);
   padding: 0.3125rem 0.5rem 0.375rem;
-  padding-inline: clamp(0.3125rem, 2cqi, 0.5rem);
+  padding-inline: clamp(0.25rem, 1.2cqi, 0.5rem);
   border: var(--line);
   border-radius: var(--radius-m);
   background: var(--paper);
@@ -272,26 +280,30 @@
     0 0 0 var(--ink);
 }
 
-.chips__chip .hud-badge {
+.chips__chip .stamp {
   grid-area: badge;
-  width: 1.375rem;
-  height: 1.375rem;
-  box-shadow: inset 0 0 0 0.125rem var(--mission);
-  font-size: 0.75rem;
 }
 
 .chips__title {
   grid-area: title;
   overflow: hidden;
   font-size: 0.75rem;
-  font-size: clamp(0.75rem, 4.2cqi, 0.8125rem);
+  font-size: clamp(0.6875rem, 3.2cqi, 0.8125rem);
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.chips__title--full {
-  display: none;
+/* The status word. A narrow chip only has room for the status icon, so the word is kept
+   for screen readers and comes into view once the chip is roomy (see below). */
+.chips__word {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .chips__status {
@@ -303,6 +315,12 @@
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* On a narrow chip an empty stamp space already says "to do", so the empty ring that
+   means the same is left out. The word is still there for screen readers. */
+.chips__chip[data-status='todo'] .chips__status .hud-icon {
+  display: none;
 }
 
 /* Status also changes the tint. The icon and the word carry the meaning. */
@@ -325,8 +343,8 @@
 }
 
 /* While the guided sequence is on screen the chips mainly report progress: flat, no press
-   effect. On a phone they shrink to one slim line (number and status) and give the height
-   back to the world. The panel shows the mission title. They keep this shape after the
+   effect. On a phone they shrink to one slim line (stamp space and status) and give the
+   height back to the world. The panel names the checkpoint. They keep this shape after the
    sequence has finished, so the footer does not grow and the island does not jump. */
 .chips__list[data-slim] .chips__chip {
   grid-template-areas: 'badge status';
@@ -339,6 +357,15 @@
 
 .chips__list[data-slim] .chips__title {
   display: none;
+}
+
+/* The passport button slims down with them: label and count side by side. */
+.chips:has(.chips__list[data-slim]) .passport-tab {
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 0.3125rem;
+  min-height: 0;
+  padding-block: 0.125rem;
 }
 
 /* Once the sequence has finished the chips can be pressed again. */
@@ -386,22 +413,14 @@
   background: color-mix(in srgb, var(--paper) 78%, transparent);
 }
 
+/* What the site is for. It follows the credit wherever the credit has a line of its own. */
+.credit__demo {
+  display: none;
+  color: var(--ink);
+  font-weight: 700;
+}
+
 @container foot (min-width: 30em) {
-  /* Roomier chip: number on the left, title over status on the right. */
-  .chips__chip,
-  .chips__list[data-slim] .chips__chip {
-    grid-template-areas:
-      'badge title'
-      'badge status';
-    gap: 0.0625rem 0.5rem;
-    min-height: var(--tap);
-    padding: 0.3125rem 0.875rem 0.3125rem 0.5rem;
-  }
-
-  .chips__list[data-slim] .chips__title--short {
-    display: block;
-  }
-
   /* Enough room for the credit to have its own line under the chips, on open sky. */
   .credit {
     position: static;
@@ -415,19 +434,66 @@
       0 0 0.5rem var(--paper);
   }
 
-  .chips__chip .hud-badge {
-    width: 1.75rem;
-    height: 1.75rem;
-    box-shadow: inset 0 0 0 0.1875rem var(--mission);
-    font-size: 0.8125rem;
+  /* On its own line the credit also has room to say what the site is for. */
+  .credit__demo {
+    display: inline;
+  }
+}
+
+@container foot (min-width: 36em) {
+  /* Roomier chip: stamp space on the left, name over status on the right. */
+  .chips__chip,
+  .chips__list[data-slim] .chips__chip {
+    grid-template-areas:
+      'badge title'
+      'badge status';
+    gap: 0.0625rem 0.5rem;
+    min-height: var(--tap);
+    padding: 0.3125rem 0.75rem 0.3125rem 0.5rem;
+  }
+
+  .chips__list[data-slim] .chips__title {
+    display: block;
+  }
+
+  .chips__chip .stamp {
+    --stamp-size: 1.75rem;
   }
 
   .chips__title {
     font-size: var(--text-s);
   }
-}
 
-@container foot (min-width: 36em) {
+  .chips__word {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .chips__chip[data-status='todo'] .chips__status .hud-icon {
+    display: block;
+  }
+
+  .passport-tab,
+  .chips:has(.chips__list[data-slim]) .passport-tab {
+    grid-auto-flow: row;
+    gap: 0.0625rem;
+    min-width: 4.5rem;
+    min-height: var(--tap);
+    padding: 0.25rem 0.75rem;
+  }
+
+  .passport-tab__label {
+    font-size: 0.6875rem;
+  }
+
+  .passport-tab__count {
+    font-size: 1.0625rem;
+  }
+
   .chips__progress {
     position: static;
     width: auto;
@@ -444,22 +510,18 @@
   }
 }
 
-@container foot (min-width: 52em) {
-  .chips__title--full,
-  .chips__list[data-slim] .chips__title--full {
-    display: block;
-  }
-
-  .chips__title--short,
-  .chips__list[data-slim] .chips__title--short {
-    display: none;
-  }
+/* The opening panel and the first screen of the guided sequence say the same sentence
+   themselves, so it is not shown twice. */
+.app-shell[data-phase='intro'] .credit__demo,
+.app-shell:not([data-mode='play'])[data-panel='overview'] .credit__demo {
+  display: none;
 }
 
-/* Bottom-sheet layout (same media query as layout.css): three equal chips across. */
+/* Bottom-sheet layout (same media query as layout.css): four equal chips across. */
 @media (max-aspect-ratio: 1 / 1), (max-width: 559px) {
   .chips__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex: 1 1 auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     justify-content: stretch;
   }
 }
@@ -484,7 +546,7 @@
   pointer-events: auto;
 }
 
-/* Where the sequence is: five segments, one per chapter. Not a button, so no shadow. */
+/* Where the sequence is: six segments, one per chapter. Not a button, so no shadow. */
 .tourbar__status {
   display: inline-flex;
   align-items: center;
@@ -561,7 +623,7 @@
   white-space: normal;
 }
 
-/* The "2 of 5" count joins the segments as soon as a phone-sized bar has room for it. */
+/* The "2 of 6" count joins the segments as soon as a phone-sized bar has room for it. */
 @container foot (min-width: 22.5em) {
   .tourbar__count {
     display: inline;
@@ -819,6 +881,12 @@
 
   .pin[data-mission='network'] .pin__button {
     --pin-tail: 35%;
+  }
+
+  /* The Pitch Deck is the front corner, right below the avatar's home pad. Its label hangs
+     to the left of its tail, so it never covers the avatar standing there. */
+  .pin[data-mission='discover'] .pin__button {
+    --pin-tail: 88%;
   }
 
   .pin[data-mission='signal'] .pin__button {

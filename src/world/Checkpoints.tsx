@@ -6,9 +6,10 @@ import { MISSION_IDS, type MissionId } from '../state/types.ts'
 import { Block, easing, useOwnMaterial, useTween } from './kit.tsx'
 import { MISSION_COLOR, PAD_TOP, PALETTE, STOPS, type Vec3 } from './layout.ts'
 
-// The four pads on the corners of the ring road. The avatar always stands on one of them.
-// Each mission pad has a small flag that rises and takes the mission color once that
-// mission is complete, so finished checkpoints stay visible from the overview.
+// The four pads on the corners of the ring road, one per checkpoint. The avatar always
+// stands on one of them, and starts on the first. Each pad has a small flag that rises and
+// takes the checkpoint's color once it is complete, so finished checkpoints stay visible
+// from the overview.
 
 const PAD = 1.1
 const PAD_BASE = 0.1
@@ -21,6 +22,8 @@ const POLE = 1.9
  * of out of it, and always clear of the two roads that leave the pad.
  */
 const POLE_OFFSET: Record<MissionId, readonly [number, number]> = {
+  // The front pad has a road on both of its back sides, so its pole stands to the right.
+  discover: [0.6, -0.1],
   network: [-0.6, -0.1],
   launch: [-0.6, -0.1],
   signal: [-0.1, -0.6],
@@ -79,7 +82,6 @@ function MissionCheckpoint({ mission }: { mission: MissionId }) {
 export function Checkpoints() {
   return (
     <>
-      <Pad at={STOPS.home} color={PALETTE.white} inner={PALETTE.teal} />
       {MISSION_IDS.map((mission) => (
         <MissionCheckpoint key={mission} mission={mission} />
       ))}

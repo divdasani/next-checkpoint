@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { applyMissionAction, createInitialState, gameReducer } from './reducer.ts'
 import {
   COMPANY_COUNT,
+  DISCOVERY_IDS,
   MISSION_IDS,
   READINESS_IDS,
   SOURCE_IDS,
+  type DiscoveryId,
   type GameAction,
   type GameState,
   type MissionAction,
@@ -38,36 +40,43 @@ function run(state: GameState, ...actions: GameAction[]): GameState {
 
 /** The part of the state that is the world itself: no mode, timeline position, or resume flag. */
 function world(state: GameState) {
-  const { phase, activeMission, avatarStop, network, signal, launch, card, hint, cheers } = state
-  return { phase, activeMission, avatarStop, network, signal, launch, card, hint, cheers }
+  const { phase, activeMission, avatarStop, discover, signal, launch, network, card, hint, cheers } = state
+  return { phase, activeMission, avatarStop, discover, signal, launch, network, card, hint, cheers }
 }
 
 /** Which missions are finished, read straight from the state. */
 function finished(state: GameState): Record<MissionId, boolean> {
   return {
-    network: state.network.connected.every(Boolean),
+    discover: state.discover.pitched,
     signal: state.signal.feedOn,
     launch: state.launch.launched,
+    network: state.network.connected.every(Boolean),
   }
 }
+
+const NONE_FINISHED = { discover: false, signal: false, launch: false, network: false }
+const ALL_FINISHED = { discover: true, signal: true, launch: true, network: true }
 
 /** What the world looks like before anything has been done. */
 const UNTOUCHED = {
   activeMission: null,
   avatarStop: 'home',
-  network: { connected: Array.from({ length: COMPANY_COUNT }, () => false) },
+  discover: { steps: { research: false, need: false, concept: false }, pitched: false },
   signal: { sources: { revenue: false, invoices: false, inquiries: false }, feedOn: false },
   launch: { ready: { requirements: false, uat: false, comms: false }, launched: false },
+  network: { connected: Array.from({ length: COMPANY_COUNT }, () => false) },
   card: null,
   hint: null,
   cheers: 0,
 }
 
 const select = (mission: MissionId): MissionAction => ({ type: 'SELECT_MISSION', mission })
-const connect = (index: number): MissionAction => ({ type: 'CONNECT_COMPANY', index })
+const explore = (step: DiscoveryId): MissionAction => ({ type: 'EXPLORE', step })
 const switchOn = (source: SourceId): MissionAction => ({ type: 'ACTIVATE_SOURCE', source })
 const prepare = (item: ReadinessId): MissionAction => ({ type: 'PREPARE', item })
+const connect = (index: number): MissionAction => ({ type: 'CONNECT_COMPANY', index })
 const openCard = (mission: MissionId): MissionAction => ({ type: 'OPEN_CARD', mission })
+const PITCH: MissionAction = { type: 'PITCH' }
 const START_FEED: MissionAction = { type: 'START_FEED' }
 const LAUNCH: MissionAction = { type: 'LAUNCH' }
 const DISMISS: MissionAction = { type: 'DISMISS_CARD' }
@@ -83,9 +92,10 @@ const CLOSE_RESUME: GameAction = { type: 'CLOSE_RESUME' }
 
 /** The clicks that finish each mission, starting from anywhere on the map. The card is left open. */
 const SOLVE: Record<MissionId, MissionAction[]> = {
-  network: [select('network'), ...Array.from({ length: COMPANY_COUNT }, (_, index) => connect(index))],
+  discover: [select('discover'), ...DISCOVERY_IDS.map((id) => explore(id)), PITCH],
   signal: [select('signal'), ...SOURCE_IDS.map((id) => switchOn(id)), START_FEED],
   launch: [select('launch'), ...READINESS_IDS.map((id) => prepare(id)), LAUNCH],
+  network: [select('network'), ...Array.from({ length: COMPANY_COUNT }, (_, index) => connect(index))],
 }
 
 const solve = (state: GameState, mission: MissionId) => run(state, ...SOLVE[mission])
@@ -93,8 +103,9 @@ const solveAndClose = (state: GameState, mission: MissionId) => run(solve(state,
 
 /** A visitor who has pressed Start playing and is looking at the map. */
 const playing = () => run(createInitialState(), { type: 'START_PLAY' })
-/** All three missions done, with the last card (Launch Day) still open. */
-const lastCardOpen = () => solve(solveAndClose(solveAndClose(playing(), 'network'), 'signal'), 'launch')
+/** All four missions done in trail order, with the last card (the hub) still open. */
+const lastCardOpen = () =>
+  solve(solveAndClose(solveAndClose(solveAndClose(playing(), 'discover'), 'signal'), 'launch'), 'network')
 
 const startedTour = () => createInitialState({ mode: 'tour' })
 
@@ -178,7 +189,13 @@ describe('starting to play and choosing a destination', () => {
   it.each(MISSION_IDS)('selecting %s highlights it and sends the avatar to its stop', (mission) => {
     const state = run(playing(), select(mission))
     expect(state).toMatchObject({ activeMission: mission, avatarStop: mission, card: null, hint: null })
-    expect(finished(state)).toEqual({ network: false, signal: false, launch: false })
+    expect(finished(state)).toEqual(NONE_FINISHED)
+  })
+
+  it('the first checkpoint is where the avatar already stands: selecting it turns it, with no walk', () => {
+    const state = run(playing(), select('discover'))
+    // 'discover' and 'home' are the same corner of the ring road (see world/paths.ts).
+    expect(state).toMatchObject({ activeMission: 'discover', avatarStop: 'discover' })
   })
 
   it.each(MISSION_IDS)('selecting %s a second time returns the very same state', (mission) => {
@@ -205,11 +222,28 @@ describe('mission actions only count at their own destination', () => {
     [
       'on the map with nothing selected',
       playing,
-      [connect(0), switchOn('revenue'), START_FEED, prepare('uat'), LAUNCH],
+      [explore('research'), PITCH, switchOn('revenue'), START_FEED, prepare('uat'), LAUNCH, connect(0)],
     ],
-    ['at the hub', () => run(playing(), select('network')), [switchOn('revenue'), START_FEED, prepare('uat'), LAUNCH]],
-    ['at the signal station', () => run(playing(), select('signal')), [connect(0), prepare('uat'), LAUNCH]],
-    ['at the launch arch', () => run(playing(), select('launch')), [connect(0), switchOn('revenue'), START_FEED]],
+    [
+      'at the pitch deck',
+      () => run(playing(), select('discover')),
+      [switchOn('revenue'), START_FEED, prepare('uat'), LAUNCH, connect(0)],
+    ],
+    [
+      'at the signal station',
+      () => run(playing(), select('signal')),
+      [explore('research'), PITCH, prepare('uat'), LAUNCH, connect(0)],
+    ],
+    [
+      'at the launch arch',
+      () => run(playing(), select('launch')),
+      [explore('research'), PITCH, switchOn('revenue'), START_FEED, connect(0)],
+    ],
+    [
+      'at the hub',
+      () => run(playing(), select('network')),
+      [explore('research'), PITCH, switchOn('revenue'), START_FEED, prepare('uat'), LAUNCH],
+    ],
   ]
 
   it.each(places)('%s, actions that belong to other missions return the same state', (_where, make, actions) => {
@@ -219,14 +253,14 @@ describe('mission actions only count at their own destination', () => {
 
   it('nothing in the world can be worked while the intro is still showing', () => {
     const intro = createInitialState()
-    const missionWork = [connect(0), switchOn('revenue'), START_FEED, prepare('uat'), LAUNCH]
+    const missionWork = [explore('research'), PITCH, switchOn('revenue'), START_FEED, prepare('uat'), LAUNCH, connect(0)]
     for (const action of [...missionWork, openCard('network'), DISMISS, LEAVE]) {
       expect(run(intro, action), action.type).toBe(intro)
     }
   })
 })
 
-describe('mission one: Eight Worlds, One System', () => {
+describe('checkpoint four, the hub: Eight Worlds, One System', () => {
   const atHub = () => run(playing(), select('network'))
 
   it('connects the companies one click at a time, and is not done until the eighth', () => {
@@ -273,7 +307,74 @@ describe('mission one: Eight Worlds, One System', () => {
   })
 })
 
-describe('mission two: Find the Signal', () => {
+describe('checkpoint one, the pitch deck: Spot the Gap', () => {
+  const atDeck = () => run(playing(), select('discover'))
+
+  it('pitching too early does not pitch, and says exactly what is missing', () => {
+    const state = run(atDeck(), PITCH)
+    expect(state.discover.pitched).toBe(false)
+    expect(state).toMatchObject({ card: null, cheers: 0, activeMission: 'discover' })
+    expect(state.hint).toEqual({
+      mission: 'discover',
+      missing: ['research', 'need', 'concept'],
+      next: 'research',
+      attempts: 1,
+    })
+  })
+
+  it('the hint lists only the steps still to do and points at the first of them', () => {
+    const oneDone = run(atDeck(), explore('research'), PITCH)
+    expect(oneDone.hint).toMatchObject({ mission: 'discover', missing: ['need', 'concept'], next: 'need' })
+
+    const twoDone = run(atDeck(), explore('concept'), explore('research'), PITCH)
+    expect(twoDone.hint).toMatchObject({ mission: 'discover', missing: ['need'], next: 'need' })
+    expect(twoDone.discover.pitched).toBe(false)
+  })
+
+  it('pressing again counts the attempt, so the interface can nudge each time', () => {
+    const state = run(atDeck(), PITCH, PITCH, PITCH)
+    expect(state.hint?.attempts).toBe(3)
+    expect(state.hint?.missing).toEqual(['research', 'need', 'concept'])
+    expect(state.discover.pitched).toBe(false)
+  })
+
+  it('doing a step clears the hint', () => {
+    const state = run(atDeck(), PITCH, explore('need'))
+    expect(state.hint).toBeNull()
+    expect(state.discover.steps).toEqual({ research: false, need: true, concept: false })
+  })
+
+  it('a repeated click on a step that is already done returns the very same state', () => {
+    const state = run(atDeck(), explore('research'))
+    expect(run(state, explore('research'))).toBe(state)
+  })
+
+  it('with all three steps done, the pitch completes the mission, opens its card, and cheers once', () => {
+    const state = solve(playing(), 'discover')
+    expect(state.discover).toEqual({ steps: { research: true, need: true, concept: true }, pitched: true })
+    expect(state).toMatchObject({ activeMission: 'discover', card: 'discover', hint: null, cheers: 1 })
+    // Only this checkpoint's stamp is earned.
+    expect(finished(state)).toEqual({ ...NONE_FINISHED, discover: true })
+  })
+
+  it('accepts the steps in any order, and forgets an earlier hint once it completes', () => {
+    const backwards = [explore('concept'), explore('need'), explore('research')]
+    const state = run(atDeck(), PITCH, ...backwards, PITCH)
+    expect(state).toMatchObject({ card: 'discover', hint: null, cheers: 1 })
+    expect(finished(state).discover).toBe(true)
+  })
+
+  it('stays complete: nothing changes afterwards, with the card open or after coming back', () => {
+    const actions = [PITCH, ...DISCOVERY_IDS.map((id) => explore(id))]
+    const cardOpen = solve(playing(), 'discover')
+    for (const action of actions) expect(run(cardOpen, action), action.type).toBe(cardOpen)
+
+    const cameBack = run(cardOpen, DISMISS, select('signal'), select('discover'))
+    for (const action of actions) expect(run(cameBack, action), action.type).toBe(cameBack)
+  })
+})
+
+describe('checkpoint two, the signal station: Find the Signal', () => {
   const atStation = () => run(playing(), select('signal'))
 
   it('pressing the feed too early does not start it, and says exactly what is missing', () => {
@@ -342,7 +443,7 @@ describe('mission two: Find the Signal', () => {
   })
 })
 
-describe('mission three: Launch Day', () => {
+describe('checkpoint three, the launch arch: Launch Day', () => {
   const atArch = () => run(playing(), select('launch'))
 
   it('pressing Launch too early does not launch, and says exactly what is missing', () => {
@@ -405,7 +506,7 @@ describe('mission three: Launch Day', () => {
   })
 })
 
-describe('Real experience cards', () => {
+describe('checkpoint cards', () => {
   it('Continue closes the card and returns to the map, leaving the avatar at that stop', () => {
     const open = solve(playing(), 'network')
     const closed = run(open, DISMISS)
@@ -446,59 +547,73 @@ describe('Real experience cards', () => {
 })
 
 describe('the finale', () => {
-  const ORDERS: [MissionId, MissionId, MissionId][] = [
-    ['network', 'signal', 'launch'],
-    ['network', 'launch', 'signal'],
-    ['signal', 'network', 'launch'],
-    ['signal', 'launch', 'network'],
-    ['launch', 'network', 'signal'],
-    ['launch', 'signal', 'network'],
-  ]
+  /** Every order in which the four checkpoints can be played: 24 of them. */
+  function orders(missions: readonly MissionId[]): MissionId[][] {
+    if (missions.length <= 1) return [[...missions]]
+    return missions.flatMap((first, index) =>
+      orders([...missions.slice(0, index), ...missions.slice(index + 1)]).map((rest) => [first, ...rest]),
+    )
+  }
+  const ORDERS = orders(MISSION_IDS).map((order) => [order.join(', then '), order] as const)
+
+  it('covers every order the trail can be played in', () => {
+    expect(ORDERS).toHaveLength(24)
+    expect(ORDERS[0][1]).toEqual(MISSION_IDS)
+  })
 
   it('does not start while a mission is still unfinished', () => {
-    const state = solveAndClose(solveAndClose(playing(), 'network'), 'signal')
-    expect(state).toMatchObject({ phase: 'active', cheers: 2 })
+    const state = solveAndClose(solveAndClose(solveAndClose(playing(), 'discover'), 'signal'), 'launch')
+    expect(state).toMatchObject({ phase: 'active', cheers: 3 })
+    expect(finished(state)).toEqual({ ...ALL_FINISHED, network: false })
   })
 
   it('waits behind the last card, then appears when that card is closed', () => {
     const lastCard = lastCardOpen()
-    expect(lastCard).toMatchObject({ phase: 'active', card: 'launch', cheers: 3 })
+    expect(lastCard).toMatchObject({ phase: 'active', card: 'network', cheers: 4 })
 
     const finale = run(lastCard, DISMISS)
-    expect(finale).toMatchObject({ phase: 'finale', card: null, activeMission: null, avatarStop: 'launch', cheers: 4 })
-    expect(finished(finale)).toEqual({ network: true, signal: true, launch: true })
+    expect(finale).toMatchObject({ phase: 'finale', card: null, activeMission: null, avatarStop: 'center', cheers: 5 })
+    expect(finished(finale)).toEqual(ALL_FINISHED)
   })
 
-  it.each(ORDERS)('is reached by playing %s, then %s, then %s', (first, second, third) => {
-    const state = [first, second, third].reduce(solveAndClose, playing())
-    expect(finished(state)).toEqual({ network: true, signal: true, launch: true })
-    // The avatar walks to the launch stop for the ending, whichever mission came last.
-    expect(state).toMatchObject({ phase: 'finale', card: null, activeMission: null, avatarStop: 'launch', cheers: 4 })
+  it.each(ORDERS)('is reached by playing %s', (_name, order) => {
+    const state = order.reduce(solveAndClose, playing())
+    expect(finished(state)).toEqual(ALL_FINISHED)
+    // The avatar goes to the middle of the island for the ending, whichever mission came last.
+    expect(state).toMatchObject({ phase: 'finale', card: null, activeMission: null, avatarStop: 'center', cheers: 5 })
   })
 
   it('also appears when the last card is closed by going back to the map', () => {
-    expect(run(lastCardOpen(), LEAVE)).toMatchObject({ phase: 'finale', card: null, cheers: 4 })
+    expect(run(lastCardOpen(), LEAVE)).toMatchObject({ phase: 'finale', card: null, cheers: 5 })
   })
 
   it('is entered once, even when the last card is closed by opening another one', () => {
-    const viaWorld = run(lastCardOpen(), select('network'))
-    expect(viaWorld).toMatchObject({ phase: 'finale', card: 'network', cheers: 4 })
-    expect(run(viaWorld, DISMISS)).toMatchObject({ phase: 'finale', card: null, cheers: 4 })
+    const viaWorld = run(lastCardOpen(), select('signal'))
+    expect(viaWorld).toMatchObject({ phase: 'finale', card: 'signal', cheers: 5 })
+    expect(run(viaWorld, DISMISS)).toMatchObject({ phase: 'finale', card: null, cheers: 5 })
 
     const viaCardButton = run(lastCardOpen(), openCard('signal'), DISMISS)
-    expect(viaCardButton).toMatchObject({ phase: 'finale', card: null, cheers: 4 })
+    expect(viaCardButton).toMatchObject({ phase: 'finale', card: null, cheers: 5 })
   })
 
   it('persists: every card can be reopened and closed without leaving it or cheering again', () => {
     const finale = run(lastCardOpen(), DISMISS)
     for (const mission of MISSION_IDS) {
+      // Reopened from the panel, the card opens over the celebration, which carries on.
       const fromPanel = run(finale, openCard(mission))
-      expect(fromPanel).toMatchObject({ phase: 'finale', card: mission })
-      expect(run(fromPanel, DISMISS)).toMatchObject({ phase: 'finale', card: null, cheers: 4 })
+      expect(fromPanel).toMatchObject({ phase: 'finale', card: mission, avatarStop: 'center' })
+      expect(run(fromPanel, DISMISS)).toMatchObject({ phase: 'finale', card: null, avatarStop: 'center', cheers: 5 })
 
+      // Reopened from the world, the avatar walks to that checkpoint, and back to the middle afterwards.
       const fromWorld = run(finale, select(mission))
       expect(fromWorld).toMatchObject({ phase: 'finale', card: mission, avatarStop: mission })
-      expect(run(fromWorld, DISMISS)).toMatchObject({ phase: 'finale', card: null, activeMission: null, cheers: 4 })
+      expect(run(fromWorld, DISMISS)).toMatchObject({
+        phase: 'finale',
+        card: null,
+        activeMission: null,
+        avatarStop: 'center',
+        cheers: 5,
+      })
     }
     expect(run(finale, DISMISS)).toBe(finale)
     expect(run(finale, { type: 'START_PLAY' })).toBe(finale)
@@ -507,7 +622,7 @@ describe('the finale', () => {
 
 describe('repeated clicks are harmless', () => {
   it('double-clicking everything ends in exactly the same world as single clicks', () => {
-    const clicks = [...SOLVE.network, DISMISS, ...SOLVE.signal, DISMISS, ...SOLVE.launch, DISMISS]
+    const clicks = MISSION_IDS.flatMap((mission) => [...SOLVE[mission], DISMISS])
     const single = run(playing(), ...clicks)
     const double = run(playing(), ...clicks.flatMap((click) => [click, click]))
     expect(double).toEqual(single)
@@ -527,7 +642,7 @@ describe('Replay in play mode', () => {
   it('the whole game can be played again afterwards', () => {
     const replayed = run(lastCardOpen(), DISMISS, REPLAY, { type: 'START_PLAY' })
     const again = MISSION_IDS.reduce(solveAndClose, replayed)
-    expect(again).toMatchObject({ phase: 'finale', cheers: 4 })
+    expect(again).toMatchObject({ phase: 'finale', cheers: 5 })
   })
 })
 
@@ -573,18 +688,23 @@ describe('Guided tour and Film mode', () => {
     // Moments chosen so that every visitor click listed would do something in play mode.
     const moments: [when: string, make: () => GameState, clicks: MissionAction[]][] = [
       ['on the Film slate', () => createInitialState({ mode: 'film' }), [select('network')]],
-      ['at the hub', () => tourUntil(startedTour(), (s) => connected(s) === 3), [connect(7), select('signal'), LEAVE]],
-      ['with a card open', () => tourUntil(startedTour(), (s) => s.card === 'network'), [DISMISS, select('launch')]],
+      [
+        'at the pitch deck',
+        () => tourUntil(startedTour(), (s) => s.discover.steps.research),
+        [explore('concept'), PITCH, select('signal'), LEAVE],
+      ],
+      ['with a card open', () => tourUntil(startedTour(), (s) => s.card === 'discover'), [DISMISS, select('launch')]],
       [
         'at the signal station',
         () => tourUntil(startedTour(), (s) => s.signal.sources.revenue),
-        [switchOn('inquiries'), START_FEED, openCard('network')],
+        [switchOn('inquiries'), START_FEED, openCard('discover')],
       ],
       [
         'at the launch arch',
         () => tourUntil(startedTour(), (s) => s.launch.ready.requirements),
         [prepare('comms'), LAUNCH],
       ],
+      ['at the hub', () => tourUntil(startedTour(), (s) => connected(s) === 3), [connect(7), select('signal'), LEAVE]],
     ]
 
     it.each(moments)('%s: visitor clicks return the same state', (_when, make, clicks) => {
@@ -639,7 +759,8 @@ describe('Guided tour and Film mode', () => {
       const start = startedTour()
       const state = tourStep(start)
       expect(state.tour).toEqual({ ...start.tour, cursor: 1 })
-      expect(state).toMatchObject({ activeMission: 'network', avatarStop: 'network' })
+      // The sequence follows the trail, so it begins at the first checkpoint.
+      expect(state).toMatchObject({ activeMission: 'discover', avatarStop: 'discover' })
     })
 
     it('are ignored when they come from an earlier run', () => {
@@ -697,7 +818,7 @@ describe('Guided tour and Film mode', () => {
 
   describe('Play it yourself (leaving the sequence)', () => {
     it('keeps the progress made so far and hands the world to the visitor', () => {
-      const mid = tourUntil(startedTour(), (s) => s.network.connected.filter(Boolean).length === 5)
+      const mid = tourUntil(startedTour(), (s) => s.discover.steps.need)
       const state = run(mid, EXIT)
       expect(state.mode).toBe('play')
       expect(state.tour.status).toBe('idle')
@@ -706,8 +827,8 @@ describe('Guided tour and Film mode', () => {
       expect(state.epoch).toBe(mid.epoch)
 
       // The visitor carries on from exactly there.
-      const byHand = run(state, connect(5), connect(6), connect(7))
-      expect(byHand).toMatchObject({ card: 'network', cheers: 1 })
+      const byHand = run(state, explore('concept'), PITCH)
+      expect(byHand).toMatchObject({ card: 'discover', cheers: 1 })
     })
 
     it('keeps completed missions and an open card', () => {
@@ -715,7 +836,7 @@ describe('Guided tour and Film mode', () => {
       const state = run(mid, EXIT)
       expect(state.mode).toBe('play')
       expect(world(state)).toEqual(world(mid))
-      expect(finished(state)).toEqual({ network: true, signal: true, launch: false })
+      expect(finished(state)).toEqual({ discover: true, signal: true, launch: false, network: false })
     })
 
     it('works the same from a paused sequence', () => {

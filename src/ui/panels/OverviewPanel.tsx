@@ -9,37 +9,46 @@ import { Dot, Icon, StatusMark } from './parts.tsx'
 const STATUS_LABEL: Record<MissionStatus, string> = {
   todo: 'To do',
   active: 'In progress',
-  done: 'Done',
+  done: content.trail.stamped,
 }
 
 // The map view (state.phase is 'active' and no mission is in progress).
-// It lists the three missions as large buttons. Choosing one sends SELECT_MISSION,
-// the same action as clicking that building in the 3D world.
+// It lists the four checkpoints as large buttons, in trail order. Choosing one sends
+// SELECT_MISSION, the same action as clicking that building in the 3D world.
+//
+// During the Guided tour and Film mode the timeline owns the world, and this panel is only
+// on screen before the first step. It is then the opening of the sequence: who curated the
+// trail, the headline, and what the site demonstrates. The passport strip under the world
+// already shows the four checkpoints, so the list is left out.
 export function OverviewPanel() {
   const { state, dispatch } = useGame()
   const headingId = useId()
-  // During the guided tour and Film mode the timeline owns the world. The panel then
-  // shows the opening line, and the list only reports progress.
-  const busy = isTourBusy(state)
+
+  if (isTourBusy(state)) {
+    return (
+      <section className="panel card overview overview--opening enter" aria-labelledby={headingId}>
+        <header className="panel__head">
+          <p className="eyebrow">{content.trail.byline}</p>
+          <h2 id={headingId} className="title title--large" tabIndex={-1} data-panel-heading>
+            {content.intro.opening}
+          </h2>
+        </header>
+        <p className="note trail-demo">{content.trail.demo}</p>
+      </section>
+    )
+  }
 
   return (
     <section className="panel card overview enter" aria-labelledby={headingId}>
       <header className="panel__head">
-        {busy && (
-          <p className="eyebrow">
-            Interactive resume
-            <Dot />
-            {content.identity.name}
-          </p>
-        )}
         <h2 id={headingId} className="title" tabIndex={-1} data-panel-heading>
-          {busy ? content.intro.opening : content.overview.heading}
+          {content.overview.heading}
         </h2>
       </header>
 
-      {!busy && <p className="overview__body">{content.overview.body}</p>}
+      <p className="overview__body">{content.overview.body}</p>
 
-      <ul className="overview__list" role="list" inert={busy}>
+      <ul className="overview__list" role="list">
         {MISSION_IDS.map((id) => {
           const mission = missionContent(id)
           const status = missionStatus(state, id)
@@ -56,18 +65,25 @@ export function OverviewPanel() {
                   {mission.number}
                 </span>
                 <span className="overview__text">
-                  <span className="visually-hidden">Mission {mission.number}: </span>
-                  <span className="overview__name">{mission.title}</span>
+                  <span className="visually-hidden">
+                    {content.trail.checkpoint} {mission.number}:{' '}
+                  </span>
+                  <span className="overview__name">
+                    {mission.checkpoint.name}
+                    <span className="overview__title">
+                      <Dot />
+                      {mission.title}
+                    </span>
+                  </span>
                   <span className="visually-hidden">, </span>
                   <span className="overview__meta">
                     {mission.place}
                     <Dot />
-                    <span className="visually-hidden">, </span>
                     <span className="overview__status">{STATUS_LABEL[status]}</span>
                   </span>
                 </span>
-                {/* A check once done. Otherwise an arrow, or an empty mark while the tour only reports progress. */}
-                {done || busy ? <StatusMark done={done} /> : <Icon name="next" />}
+                {/* A check once done, an arrow until then. */}
+                {done ? <StatusMark done /> : <Icon name="next" />}
               </button>
             </li>
           )

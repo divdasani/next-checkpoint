@@ -5,7 +5,7 @@ import { panelKind } from './state/selectors.ts'
 import { DestinationPins } from './ui/DestinationPins.tsx'
 import { FilmTapLayer } from './ui/FilmTapLayer.tsx'
 import { LiveRegion } from './ui/LiveRegion.tsx'
-import { MissionChips } from './ui/MissionChips.tsx'
+import { PassportDialog, PassportStrip } from './ui/Passport.tsx'
 import { ResumeDialog } from './ui/ResumeDialog.tsx'
 import { StagePanel } from './ui/StagePanel.tsx'
 import { TopBar } from './ui/TopBar.tsx'
@@ -70,6 +70,7 @@ function pinLayerBounds(stage: ScreenRect | null): CSSProperties | undefined {
  *   world-layer  the 3D canvas, filling the screen
  *   pin-layer    HTML labels that the canvas positions above the buildings
  *   hud          the interface: top bar, the free "stage" area, the panel, and the footer
+ *                (tour controls, the passport strip, and the credit)
  *
  * The data attributes on .app-shell expose the current state to the stylesheets
  * (for example, Film mode hides optional help with one CSS rule).
@@ -94,6 +95,10 @@ function Shell() {
   const [controlsRun, setControlsRun] = useState<number | null>(null)
   const controlsShown = mode === 'film' && status === 'done' && controlsRun === runId
   const toggleControls = () => setControlsRun((shownFor) => (shownFor === runId ? null : runId))
+
+  // The passport view only looks at the game, it never changes it, so whether it is open
+  // is plain interface state and lives here instead of in the reducer.
+  const [passportOpen, setPassportOpen] = useState(false)
 
   return (
     <>
@@ -143,14 +148,20 @@ function Shell() {
 
           <footer className="hud__foot">
             <TourBar revealed={controlsShown} />
-            <MissionChips />
-            <p className="credit">{content.credit.line}</p>
+            <PassportStrip open={passportOpen} onOpen={() => setPassportOpen(true)} />
+            {/* The independence credit, then what the site is for. The second sentence is
+                shown wherever the credit has a line of its own (see hud.css). */}
+            <p className="credit">
+              <span className="credit__line">{content.credit.line}</span>{' '}
+              <span className="credit__demo">{content.trail.demo}</span>
+            </p>
           </footer>
         </div>
       </div>
 
       {/* Outside .app-shell on purpose: the print stylesheet hides the shell and prints the resume. */}
       <ResumeDialog />
+      <PassportDialog open={passportOpen} onClose={() => setPassportOpen(false)} />
       <LiveRegion />
     </>
   )

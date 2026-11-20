@@ -2,13 +2,16 @@ import { useId } from 'react'
 import { content, missionContent } from '../../content/content.ts'
 import { useGame } from '../../state/GameContext.tsx'
 import { connectedCount, isTourBusy } from '../../state/selectors.ts'
-import { COMPANY_COUNT, MISSION_IDS, READINESS_IDS, SOURCE_IDS } from '../../state/types.ts'
+import { COMPANY_COUNT, DISCOVERY_IDS, MISSION_IDS, READINESS_IDS, SOURCE_IDS } from '../../state/types.ts'
 import { Dot, Icon, StatusMark } from './parts.tsx'
 import { StepControls } from './StepControls.tsx'
 
 // The controls for the mission the visitor is working on (state.activeMission).
 // Every button here sends the same action as clicking the matching object in the 3D
 // world, so the world and this panel always agree.
+//
+// The panel opens with the real problem behind the checkpoint (the challenge), then says
+// what to do in the mini-game. The result and the skills follow on the checkpoint card.
 export function MissionPanel() {
   const { state, dispatch } = useGame()
   const headingId = useId()
@@ -28,35 +31,40 @@ export function MissionPanel() {
     >
       <header className="panel__head">
         <p className="eyebrow">
-          Mission {mission.number} of {MISSION_IDS.length}
+          {content.trail.checkpoint} {mission.number} of {MISSION_IDS.length}
           <Dot />
-          {mission.place}
+          {mission.checkpoint.name}
         </p>
         <h2 id={headingId} className="title" tabIndex={-1} data-panel-heading>
           {mission.title}
         </h2>
       </header>
 
-      <p className="mission__objective">{mission.objective}</p>
+      <p className="mission__challenge">
+        <span className="mission__source">{mission.checkpoint.source}</span>
+        <span className="visually-hidden">: </span>
+        {mission.checkpoint.challenge}
+      </p>
+      {/* The instruction is for players. The guided sequence does the steps itself. */}
+      {!busy && <p className="mission__objective">{mission.objective}</p>}
       {!busy && <p className="note mission__how film-hide">{mission.how}</p>}
 
       <div className="mission__controls" inert={busy}>
-        {id === 'network' && <NetworkControls />}
+        {id === 'discover' && <DiscoverControls />}
         {id === 'signal' && <SignalControls />}
         {id === 'launch' && <LaunchControls />}
+        {id === 'network' && <NetworkControls />}
       </div>
 
-      {/* Help that a screen recording does not need. Film mode hides the note and the button.
-          The wrapper is marked as well, so no empty gap is left behind. */}
-      <div className="mission__foot film-hide">
-        <p className="note film-hide">{mission.illustrationNote}</p>
-        {!busy && (
+      {/* The way back, for players. The guided sequence moves on by itself. */}
+      {!busy && (
+        <div className="mission__foot film-hide">
           <button type="button" className="btn mission__back film-hide" onClick={() => dispatch({ type: 'LEAVE_MISSION' })}>
             <Icon name="back" />
             Back to map
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -67,7 +75,7 @@ function splitLabel(label: string): [lead: string, key: string] {
   return cut === -1 ? ['', label] : [label.slice(0, cut), label.slice(cut + 1)]
 }
 
-/** Mission one: eight company tiles and a progress bar. Each tile sends CONNECT_COMPANY. */
+/** The hub: eight company tiles and a progress bar. Each tile sends CONNECT_COMPANY. */
 function NetworkControls() {
   const { state, dispatch } = useGame()
   const copy = content.missions.network
@@ -121,7 +129,29 @@ function NetworkControls() {
   )
 }
 
-/** Mission two: three data sources, then the automated feed. */
+/** The pitch deck: three steps from research to concept, then the pitch. */
+function DiscoverControls() {
+  const { state, dispatch } = useGame()
+  const copy = content.missions.discover
+
+  return (
+    <StepControls
+      ids={DISCOVERY_IDS}
+      labels={copy.steps}
+      done={state.discover.steps}
+      todoWord="To do"
+      doneWord="Done"
+      actionLabel={copy.pitchAction}
+      hint={state.hint?.mission === 'discover' ? state.hint : null}
+      blocked={copy.blocked}
+      nextAction={copy.nextAction}
+      onStep={(step) => dispatch({ type: 'EXPLORE', step })}
+      onAction={() => dispatch({ type: 'PITCH' })}
+    />
+  )
+}
+
+/** The signal station: three data sources, then the automated feed. */
 function SignalControls() {
   const { state, dispatch } = useGame()
   const copy = content.missions.signal
@@ -143,7 +173,7 @@ function SignalControls() {
   )
 }
 
-/** Mission three: three readiness checks, then Launch. */
+/** The launch arch: three readiness checks, then Launch. */
 function LaunchControls() {
   const { state, dispatch } = useGame()
   const copy = content.missions.launch

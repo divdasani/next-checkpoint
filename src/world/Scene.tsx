@@ -1,13 +1,14 @@
 import { Avatar } from './Avatar.tsx'
 import { CameraRig } from './CameraRig.tsx'
 import { Checkpoints } from './Checkpoints.tsx'
+import { DiscoverZone } from './DiscoverZone.tsx'
 import { LaunchZone } from './LaunchZone.tsx'
 import { NetworkZone } from './NetworkZone.tsx'
 import { PinProjector } from './PinProjector.tsx'
 import { SignalZone } from './SignalZone.tsx'
 import { Terrain } from './Terrain.tsx'
 
-// One small scene: two lights, the island, three mission zones, and the avatar.
+// One small scene: two lights, the island, four mission zones, and the avatar.
 // Light comes from the upper left, so tops are brightest, left faces are mid, and right
 // faces are darkest. That contrast is what makes the blocks read as solid.
 
@@ -29,9 +30,10 @@ export function Scene() {
       <CameraRig />
       <Terrain />
       <Checkpoints />
-      <NetworkZone />
+      <DiscoverZone />
       <SignalZone />
       <LaunchZone />
+      <NetworkZone />
       <Avatar />
       <PinProjector />
     </>

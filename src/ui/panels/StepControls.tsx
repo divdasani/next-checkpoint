@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef } from 'react'
 import { Icon, StatusMark } from './parts.tsx'
 
-// Find the Signal and Launch Day share one shape: three steps to switch on, then one
-// main action that only works once all three are done. This component draws that shape.
+// Spot the Gap, Find the Signal, and Launch Day share one shape: three steps to switch on,
+// then one main action that only works once all three are done. This component draws that shape.
 // MissionPanel gives it the words, the current state, and what to dispatch.
 
 /** The explanation the reducer stores when the main action is pressed too early. */

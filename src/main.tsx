@@ -6,6 +6,7 @@ import './styles/base.css'
 import './styles/layout.css'
 import './styles/hud.css'
 import './styles/panels.css'
+import './styles/passport.css'
 import './styles/resume.css'
 import './styles/print.css'
 

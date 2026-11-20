@@ -1,0 +1,427 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   The passport: the stamps, the button that opens the passport, and the passport
+   view itself (ui/Stamp.tsx and ui/Passport.tsx). The row of stamp spaces under
+   the world is styled with the rest of the footer in hud.css.
+
+   Colors and outlines come from tokens.css. A stamp takes its color from the
+   data-mission attribute on it or above it, like every other mission accent.
+   Sizes are in rem, so everything grows with the root font size that layout.css
+   raises for large recording windows.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Stamps ───────────────────────────────────────────────────────────────── */
+
+/* An empty stamp space: a dashed ring with the checkpoint's number, clearly not yet earned. */
+.stamp {
+  --stamp-size: 1.375rem;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--stamp-size);
+  height: var(--stamp-size);
+  border: 0.125rem dashed var(--ink-faint);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink-faint);
+  font-size: calc(var(--stamp-size) * 0.46);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stamp[data-size='m'] {
+  --stamp-size: 2.5rem;
+}
+
+.stamp[data-size='l'] {
+  --stamp-size: 3.5rem;
+}
+
+/* Earned: solid outline, the checkpoint's color, its drawing, and a slight tilt, as if
+   pressed on by hand. The drawing and the words beside it carry the meaning, not the color. */
+.stamp[data-earned='true'] {
+  border: var(--line);
+  background: var(--mission);
+  color: var(--ink);
+  rotate: -8deg;
+}
+
+/* The larger stamps get a second, thin ring just inside the outline. */
+.stamp[data-earned='true']:not([data-size='s']) {
+  box-shadow:
+    inset 0 0 0 0.1875rem var(--mission),
+    inset 0 0 0 0.25rem var(--ink);
+}
+
+.stamp__art {
+  width: 56%;
+  height: 56%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stamp[data-size='s'] .stamp__art {
+  width: 66%;
+  height: 66%;
+  stroke-width: 2.4;
+}
+
+/* The space for the checkpoint after this trail. It stays empty: a darker dashed ring on
+   a faint tint, so it reads as waiting, not as missing. */
+.stamp--next {
+  position: relative;
+  border-color: var(--ink);
+  background: var(--paper-tint);
+}
+
+/* A sticker on that space: a yellow seal with one word, a little larger than the ring and
+   tilted. It covers the ring without replacing it, so the space still reads as not stamped. */
+.sticker {
+  position: absolute;
+  inset: -14%;
+  width: 128%;
+  height: 128%;
+  overflow: visible;
+  rotate: -12deg;
+}
+
+.sticker__seal {
+  fill: var(--yellow);
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.sticker__shadow {
+  fill: var(--ink);
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.sticker__word {
+  fill: var(--ink);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+/* Pressed on by hand, a moment after the ending appears. */
+@keyframes sticker-on {
+  0% {
+    opacity: 0;
+    scale: 2.2;
+    rotate: 10deg;
+  }
+  60% {
+    opacity: 1;
+    scale: 0.9;
+    rotate: -16deg;
+  }
+  82% {
+    scale: 1.05;
+  }
+  100% {
+    scale: 1;
+    rotate: -12deg;
+  }
+}
+
+.sticker[data-fresh='true'] {
+  animation: sticker-on 480ms cubic-bezier(0.2, 0.9, 0.3, 1) 520ms both;
+}
+
+/* The moment a stamp is earned: it comes down large, lands, and settles. Half a second. */
+@keyframes stamp-down {
+  0% {
+    opacity: 0;
+    scale: 2.4;
+    rotate: 14deg;
+  }
+  55% {
+    opacity: 1;
+    scale: 0.9;
+    rotate: -10deg;
+  }
+  78% {
+    scale: 1.06;
+  }
+  100% {
+    scale: 1;
+    rotate: -8deg;
+  }
+}
+
+.stamp[data-fresh='true'] {
+  animation: stamp-down 520ms cubic-bezier(0.2, 0.9, 0.3, 1) 160ms both;
+}
+
+/* ── The passport button ──────────────────────────────────────────────────── */
+
+/* Dark, like the cover of a passport, so it reads as the thing that holds the stamps.
+   Compact first: the count over a small label. */
+.passport-tab {
+  flex: none;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.0625rem;
+  min-width: 2.5rem;
+  min-height: var(--tap);
+  padding: 0.25rem 0.3125rem;
+  border: var(--line);
+  border-radius: var(--radius-m);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0.125rem 0.125rem 0 var(--ink-faint);
+  font-weight: 800;
+  line-height: 1.1;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 90ms ease-out,
+    box-shadow 90ms ease-out;
+}
+
+/* On the narrowest phones the word gives its room to the four stamp spaces. The count
+   stays, and the button's full name is still read out. */
+.passport-tab__label {
+  display: none;
+  font-size: 0.5625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@container foot (min-width: 20.5em) {
+  .passport-tab__label {
+    display: inline;
+  }
+}
+
+.passport-tab__count {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (hover: hover) {
+  .passport-tab:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 0.1875rem 0.1875rem 0 var(--ink-faint);
+  }
+}
+
+.passport-tab:active {
+  transform: translate(0.125rem, 0.125rem);
+  box-shadow: 0 0 0 var(--ink-faint);
+}
+
+/* While the guided sequence is on screen it only reports the count: flat, no press effect. */
+.passport-tab[inert] {
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
+/* ── The passport view ────────────────────────────────────────────────────── */
+
+@media screen {
+  /* Never set "display" on .passport-dialog itself: the browser hides a closed dialog
+     with display: none, and a rule here would show it again. */
+  .passport-dialog {
+    position: fixed;
+    inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
+      env(safe-area-inset-left, 0px);
+    z-index: 10;
+    width: min(35rem, calc(100% - 2 * max(var(--edge), 0.75rem)));
+    max-width: none;
+    height: fit-content;
+    max-height: calc(100% - 2 * max(var(--edge), 0.75rem));
+    margin: auto;
+    padding: 1rem 1.125rem 1.125rem;
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    border: var(--line);
+    border-radius: var(--radius-l);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: var(--lift);
+  }
+
+  .passport-dialog[open] {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  /* The dimmed world behind the passport. This is --ink at half strength, written out
+     because older browsers do not pass custom properties to ::backdrop. */
+  .passport-dialog::backdrop {
+    background: rgb(20 33 61 / 0.5);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .passport-dialog[open] {
+      animation: rise-in 200ms ease-out both;
+    }
+  }
+
+  .passport-dialog__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .passport-dialog__close {
+    min-height: max(2.25rem, 36px);
+    padding: 0 0.875rem;
+    font-size: var(--text-s);
+  }
+
+  /* The cover: who curated the trail, like the name on a passport. */
+  .passport-dialog__cover {
+    display: grid;
+    gap: 0.1875rem;
+    padding: 0.75rem 0.875rem;
+    border: var(--line);
+    border-radius: var(--radius-m);
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .passport-dialog__byline {
+    font-weight: 800;
+  }
+
+  .passport-dialog__themes {
+    font-size: var(--text-s);
+    font-weight: 600;
+  }
+
+  .passport-dialog__profile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.125rem 1rem;
+    margin: 0.25rem 0 0;
+    font-size: var(--text-xs);
+  }
+
+  .passport-dialog__profile > div {
+    display: flex;
+    gap: 0.3125rem;
+  }
+
+  .passport-dialog__profile dt {
+    font-weight: 600;
+    opacity: 0.8;
+  }
+
+  .passport-dialog__profile dt::after {
+    content: ':';
+  }
+
+  .passport-dialog__profile dd {
+    margin: 0;
+    font-weight: 800;
+  }
+
+  /* Four stamp spaces, two across on a phone. */
+  .passport-dialog__stamps {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .passport-dialog__space {
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 0.1875rem;
+    padding: 0.75rem 0.375rem 0.625rem;
+    border: 0.125rem dashed var(--ink-faint);
+    border-radius: var(--radius-m);
+    text-align: center;
+  }
+
+  .passport-dialog__space[data-earned='true'] {
+    border: var(--line);
+    background: var(--mission-soft);
+  }
+
+  .passport-dialog__stamp-label {
+    margin-top: 0.25rem;
+    font-size: var(--text-s);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .passport-dialog__space[data-earned='false'] .passport-dialog__stamp-label {
+    color: var(--ink-faint);
+  }
+
+  .passport-dialog__checkpoint {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+
+  .passport-dialog__state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--text-xs);
+    font-weight: 800;
+  }
+
+  .passport-dialog__skills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .passport-dialog__skills .chip {
+    padding: 0.0625rem 0.5rem;
+    background: var(--paper);
+    font-size: 0.75rem;
+  }
+
+  .passport-dialog__progress {
+    font-weight: 800;
+  }
+
+  /* The space after the trail, always empty. */
+  .passport-dialog__next {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border: 0.125rem dashed var(--ink);
+    border-radius: var(--radius-m);
+    background: var(--paper-tint);
+  }
+
+  .passport-dialog__next-title {
+    font-size: var(--text-l);
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .passport-dialog__credit {
+    font-size: var(--text-xs);
+  }
+
+  @media (min-width: 560px) {
+    .passport-dialog__stamps {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+}

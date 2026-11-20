@@ -5,14 +5,17 @@ import { useGame } from '../state/GameContext.tsx'
 import type { StopId } from '../state/types.ts'
 import { avatarConfig } from './avatarConfig.ts'
 import { Block, easing, useWorld, type BlockProps } from './kit.tsx'
-import { PAD_TOP, RING_ORDER, STOPS, type Vec3 } from './layout.ts'
-import { pointAlong, routeBetween, routeLength } from './paths.ts'
+import { PAD_TOP, PALETTE, STOPS, type Vec3 } from './layout.ts'
+import { pointAlong, routeBetween, routeFrom, routeLength } from './paths.ts'
 
 // Annika's avatar: a few boxes, colored from avatarConfig.ts, that walk the ring road.
 //
 // State only says which stop the avatar belongs at (state.avatarStop) and how many
 // completions to celebrate (state.cheers). Everything in between (the walk, the turn,
 // the cheer) is worked out here, frame by frame, without touching React state.
+//
+// When the trail is complete the avatar walks to the middle of the pond, and there it
+// holds a bunch of balloons and dances until the visitor moves on.
 
 // ── Motion settings ──────────────────────────────────────────────────────────
 
@@ -30,13 +33,26 @@ const CHEER_MS = 900 // length of the whole cheer
 const HOP = 0.25 // height of the one hop in a cheer
 const ARMS_UP = 2.45 // how far the arms lift in a cheer, in radians
 
+// The celebration at the end of the trail.
+const HOLD_LIFT = 0.9 // how high the arm with the balloons is held, as a share of ARMS_UP
+const HOLD_MS = 140 // how quickly that arm goes up and the balloons appear: smaller is faster
+const DANCE_EASE_MS = 180 // how quickly the dance starts and stops
+const DANCE_BEAT_MS = 460 // one bounce of the dance
+const DANCE_BOUNCE = 0.09 // height of each bounce
+const DANCE_TWIST = 0.38 // how far the body turns from side to side, in radians
+const DANCE_LEAN = 0.09 // how far it leans with each turn
+const DANCE_STEP = 0.32 // how far the legs step in place
+const BALLOON_SWAY = 0.12 // how far the bunch of balloons swings behind the dance
+
 // Headings are turns around the vertical axis: 0 faces +z and a quarter turn faces +x.
 const FACE_CAMERA = Math.PI / 4
 const REST_FACING: Record<StopId, number> = {
   home: FACE_CAMERA,
+  discover: FACE_CAMERA, // the pitch deck lies between this corner and the camera
   network: 0,
   signal: Math.PI / 2,
   launch: (5 * Math.PI) / 4, // toward the arch, away from the camera
+  center: FACE_CAMERA, // the dance is for the visitor
 }
 
 // ── Body ─────────────────────────────────────────────────────────────────────
@@ -70,7 +86,7 @@ function Part({ color = '#ffffff', ...box }: BlockProps) {
 }
 
 type Pivot = RefObject<Group | null>
-type Rig = Record<'root' | 'armLeft' | 'armRight' | 'legLeft' | 'legRight', Pivot>
+type Rig = Record<'root' | 'armLeft' | 'armRight' | 'legLeft' | 'legRight' | 'balloons', Pivot>
 type Side = 1 | -1
 const SIDES: readonly Side[] = [1, -1]
 
@@ -111,20 +127,36 @@ function Face() {
 
 /**
  * Every style shares the cap on top. The bob adds chin-length hair at the back and two
- * side locks that frame the face. The other two styles are cropped close, and the
- * ponytail adds a knot on top with a tail behind.
+ * side locks that frame the face. Long hair is the bob grown out: the hair at the back and
+ * the side locks reach the shoulders, a fall hangs down the back, and two strands rest on
+ * the chest. The other two styles are cropped close, and the ponytail adds a knot on top
+ * with a tail behind.
  */
 function Hair() {
   const { hair, hairStyle } = avatarConfig
-  const bob = hairStyle === 'bob'
+  const long = hairStyle === 'long'
+  const framed = long || hairStyle === 'bob' // hair down the back and the sides of the head
+  // That hair starts under the cap. These are its middle and its height at the back and at the sides.
+  const backY = long ? -0.03 : framed ? 0.015 : 0.07
+  const backHeight = long ? 0.44 : framed ? 0.35 : 0.24
+  const lockY = long ? -0.01 : 0.015
+  const lockHeight = long ? 0.4 : 0.35
   return (
     <>
       <Part at={[0, 0.245, 0]} size={[0.62, 0.11, 0.56]} color={hair} />
-      <Part at={[0, bob ? 0.015 : 0.07, -0.24]} size={[0.62, bob ? 0.35 : 0.24, 0.08]} color={hair} />
-      {bob ? (
-        <Pair at={[0.28, 0.015, 0.04]} size={[0.06, 0.35, 0.48]} color={hair} />
+      <Part at={[0, backY, -0.24]} size={[0.62, backHeight, 0.08]} color={hair} />
+      {framed ? (
+        <Pair at={[0.28, lockY, 0.04]} size={[0.06, lockHeight, 0.48]} color={hair} />
       ) : (
         <Pair at={[0.285, 0.115, -0.07]} size={[0.05, 0.15, 0.26]} color={hair} />
+      )}
+      {long && (
+        <>
+          {/* The fall down the back. It is narrower than the shoulders, so the arms swing past it. */}
+          <Part at={[0, -0.38, -0.205]} size={[0.46, 0.36, 0.15]} color={hair} />
+          {/* Two strands over the front of the shoulders, inside the arms for the same reason. */}
+          <Pair at={[0.18, -0.35, 0.1525]} size={[0.11, 0.3, 0.045]} color={hair} />
+        </>
       )}
       {hairStyle === 'ponytail' && (
         <>
@@ -159,6 +191,60 @@ function Accessory() {
   return null
 }
 
+// ── Balloons ─────────────────────────────────────────────────────────────────
+// Three blocky balloons on strings, held in the avatar's left hand at the end of the trail.
+
+/** Where that hand is while the arm is held up (HOLD_LIFT), measured like the rest of the body. */
+const HAND: Vec3 = [0.62, 1.08, 0]
+
+/**
+ * Each balloon's color, its middle measured from the hand, and its size. Seen from the
+ * camera the first one floats in front of the coral launch pad, so it is the blue one.
+ */
+const BALLOONS: readonly { color: string; at: Vec3; size: Vec3 }[] = [
+  { color: PALETTE.blue, at: [-0.34, 1.42, 0.05], size: [0.42, 0.5, 0.42] },
+  { color: PALETTE.yellow, at: [0.12, 1.72, -0.07], size: [0.46, 0.54, 0.46] },
+  { color: PALETTE.coral, at: [0.56, 1.36, 0.06], size: [0.4, 0.48, 0.4] },
+]
+
+function Balloon({ color, at, size }: (typeof BALLOONS)[number]) {
+  const [x, y, z] = at
+  const bottom = y - size[1] / 2
+  // The string runs from the hand (the middle of this group) to just under the knot.
+  const end: Vec3 = [x, bottom - 0.07, z]
+  const length = Math.hypot(...end)
+  return (
+    <>
+      <Part at={at} size={size} color={color} />
+      <Part at={[x, bottom - 0.035, z]} size={[0.11, 0.07, 0.11]} color={color} />
+      {/* A small square of shine on the side that faces the visitor. */}
+      <Part
+        at={[x - size[0] * 0.22, y + size[1] * 0.2, z + size[2] / 2 + 0.006]}
+        size={[size[0] * 0.2, size[1] * 0.22, 0.012]}
+        color={PALETTE.white}
+        cast={false}
+      />
+      <Part
+        at={[end[0] / 2, end[1] / 2, end[2] / 2]}
+        size={[0.022, length, 0.022]}
+        color={PALETTE.white}
+        cast={false}
+        rotation={[Math.atan2(end[2], end[1]), 0, -Math.asin(end[0] / length)]}
+      />
+    </>
+  )
+}
+
+function Balloons({ pivot }: { pivot: Pivot }) {
+  return (
+    <group ref={pivot} position={HAND as [number, number, number]} visible={false}>
+      {BALLOONS.map((balloon) => (
+        <Balloon key={balloon.color} {...balloon} />
+      ))}
+    </group>
+  )
+}
+
 function Body({ rig }: { rig: Rig }) {
   return (
     <group ref={rig.root}>
@@ -174,6 +260,7 @@ function Body({ rig }: { rig: Rig }) {
         <Hair />
         <Accessory />
       </group>
+      <Balloons pivot={rig.balloons} />
     </group>
   )
 }
@@ -198,6 +285,7 @@ interface Motion {
   epoch: number
   // Where the avatar is and which way it faces right now.
   x: number
+  y: number // height above the pads: 0 on the road, a little lower in the pond
   z: number
   heading: number
   facing: number // the heading to settle into while standing
@@ -205,6 +293,12 @@ interface Motion {
   phase: number // walk cycle angle: every half turn is one step, and 0 is the rest pose
   cheerStart: number | null
   cheerQueued: boolean // a cheer waiting for the walk, or an earlier cheer, to finish
+  // The celebration at the end of the trail.
+  party: boolean // the trail is complete and the avatar belongs in the middle of the pond
+  paused: boolean // the resume covers the world, so the dance waits
+  hold: number // 0 to 1: the arm with the balloons going up, and the balloons appearing
+  dance: number // 0 to 1: how much of the dance is mixed into the pose
+  danceTime: number // milliseconds danced so far
   moving: boolean // true while the frame loop still has work to do
   lastFrame: number
 }
@@ -215,6 +309,7 @@ const smooth = (value: number) => clamp01(value) ** 2 * (3 - 2 * clamp01(value))
 /** The avatar standing on a stop in the rest pose, with nothing in progress. */
 const standing = (stop: StopId) => ({
   x: STOPS[stop][0],
+  y: STOPS[stop][1],
   z: STOPS[stop][2],
   heading: REST_FACING[stop],
   facing: REST_FACING[stop],
@@ -224,22 +319,9 @@ const standing = (stop: StopId) => ({
   cheerQueued: false,
 })
 
-/**
- * A route for a destination chosen in the middle of a walk. The avatar is partway along
- * one road, between the two stops nearest to it. It leaves by whichever of those two
- * gives the shorter walk, so it never jumps and never cuts across the grass.
- */
-function routeFromRoad(here: Vec3, to: StopId): Vec3[] {
-  const distance = (stop: StopId) => Math.hypot(here[0] - STOPS[stop][0], here[2] - STOPS[stop][2])
-  const [nearest, next] = [...RING_ORDER].sort((a, b) => distance(a) - distance(b))
-  const one = [here, ...routeBetween(nearest, to)]
-  const other = [here, ...routeBetween(next, to)]
-  return routeLength(one) <= routeLength(other) ? one : other
-}
-
-/** Plan one tween over the whole route to a stop. */
+/** Plan one tween over the whole route to a stop. A trip redirected mid-walk starts where the avatar is. */
 function startTrip(m: Motion, to: StopId, now: number): void {
-  const route = m.trip ? routeFromRoad([m.x, 0, m.z], to) : routeBetween(m.stop, to)
+  const route = m.trip ? routeFrom([m.x, m.y, m.z], to) : routeBetween(m.stop, to)
   const length = routeLength(route)
   m.facing = REST_FACING[to]
   m.trip = {
@@ -259,31 +341,68 @@ function turnToward(heading: number, target: number, elapsedMs: number): number 
   return Math.abs(turn) < 0.02 ? target : heading + turn * (1 - Math.exp(-elapsedMs / TURN_MS))
 }
 
+/** Ease a value toward a target. It slows as it nears, then lands exactly on it. */
+function approach(value: number, target: number, elapsedMs: number, easeMs: number): number {
+  const next = value + (target - value) * (1 - Math.exp(-elapsedMs / easeMs))
+  return Math.abs(target - next) < 0.003 ? target : next
+}
+
 /** Write the current motion values straight onto the 3D groups. */
 function pose(rig: Rig, m: Motion, lift: number, hop: number): void {
   const swing = SWING * Math.sin(m.phase)
-  const armSwing = swing * (1 - lift)
-  rig.root.current?.position.set(m.x, GROUND + BOB * Math.sin(m.phase) ** 2 + HOP * hop, m.z)
-  rig.root.current?.rotation.set(0, m.heading, 0)
+  // The dance: a bounce on every beat, and a turn, a lean, and a step from side to side
+  // that take two beats. All of it fades in and out with m.dance.
+  const beat = (m.danceTime / DANCE_BEAT_MS) * Math.PI
+  const side = m.dance * Math.sin(beat)
+  const bounce = m.dance * DANCE_BOUNCE * Math.abs(Math.sin(beat))
+  const step = swing + DANCE_STEP * side
+  rig.root.current?.position.set(m.x, GROUND + m.y + BOB * Math.sin(m.phase) ** 2 + HOP * hop + bounce, m.z)
+  rig.root.current?.rotation.set(0, m.heading + DANCE_TWIST * side, DANCE_LEAN * side)
+  rig.legLeft.current?.rotation.set(step, 0, 0)
+  rig.legRight.current?.rotation.set(-step, 0, 0)
   // Each arm swings opposite to the leg on its own side. A cheer lifts both arms out and up.
-  rig.legLeft.current?.rotation.set(swing, 0, 0)
-  rig.legRight.current?.rotation.set(-swing, 0, 0)
-  rig.armLeft.current?.rotation.set(-armSwing, 0, ARMS_UP * lift)
-  rig.armRight.current?.rotation.set(armSwing, 0, -ARMS_UP * lift)
+  // At the end of the trail the left arm stays up with the balloons, and the right arm
+  // waves overhead, twice to every bounce.
+  const liftLeft = Math.max(lift, HOLD_LIFT * m.hold)
+  const liftRight = Math.max(lift, m.dance * (0.74 + 0.2 * Math.sin(beat * 2)))
+  rig.armLeft.current?.rotation.set(-swing * (1 - liftLeft), 0, ARMS_UP * liftLeft)
+  rig.armRight.current?.rotation.set(swing * (1 - liftRight), 0, -ARMS_UP * liftRight)
+  // The balloons grow out of the hand, stay more upright than the dancer, and swing a little behind.
+  const balloons = rig.balloons.current
+  if (balloons) {
+    balloons.visible = m.hold > 0.01
+    balloons.scale.setScalar(m.hold)
+    balloons.rotation.set(0, 0, m.dance * BALLOON_SWAY * Math.sin(beat - 0.9) - 0.6 * DANCE_LEAN * side)
+  }
 }
 
 export function Avatar() {
-  const { avatarStop, cheers } = useGame().state
+  const { avatarStop, cheers, phase, resumeOpen } = useGame().state
   const { reducedMotion, epoch } = useWorld()
   const invalidate = useThree((three) => three.invalidate)
+  // The trail is complete and the avatar belongs in the middle of the pond.
+  const party = phase === 'finale' && avatarStop === 'center'
   const rig: Rig = {
     root: useRef<Group>(null),
     armLeft: useRef<Group>(null),
     armRight: useRef<Group>(null),
     legLeft: useRef<Group>(null),
     legRight: useRef<Group>(null),
+    balloons: useRef<Group>(null),
   }
-  const motion = useRef<Motion>({ stop: avatarStop, cheers, epoch, moving: false, lastFrame: 0, ...standing(avatarStop) })
+  const motion = useRef<Motion>({
+    stop: avatarStop,
+    cheers,
+    epoch,
+    party,
+    paused: resumeOpen,
+    hold: party ? 1 : 0,
+    dance: 0,
+    danceTime: 0,
+    moving: false,
+    lastFrame: 0,
+    ...standing(avatarStop),
+  })
 
   // State changed: decide what to start. The frame loop below does the moving.
   useLayoutEffect(() => {
@@ -293,8 +412,11 @@ export function Avatar() {
     const cheered = cheers > m.cheers
     if (reset || reducedMotion) {
       // No tween: appear at the stop. A completion still turns the avatar to the camera.
+      // With reduced motion the ending is a still pose: the balloons are there, the dance is not.
       Object.assign(m, standing(avatarStop))
       if (cheered && !reset) m.heading = m.facing = FACE_CAMERA
+      m.hold = party ? 1 : 0
+      m.dance = 0
     } else {
       if (avatarStop !== m.stop) startTrip(m, avatarStop, now)
       if (cheered) m.cheerQueued = true
@@ -302,10 +424,12 @@ export function Avatar() {
     m.stop = avatarStop
     m.cheers = cheers
     m.epoch = epoch
+    m.party = party
+    m.paused = resumeOpen
     if (!m.moving) m.lastFrame = now
     m.moving = true
     invalidate()
-  }, [avatarStop, cheers, epoch, reducedMotion, invalidate])
+  }, [avatarStop, cheers, epoch, party, resumeOpen, reducedMotion, invalidate])
 
   useFrame(() => {
     const m = motion.current
@@ -324,6 +448,7 @@ export function Avatar() {
       const walked = walkedAt(now)
       const here = pointAlong(route, walked).position
       m.x = here[0]
+      m.y = here[1]
       m.z = here[2]
       if (walked < length) {
         m.phase = phaseFrom + (phaseTo - phaseFrom) * (walked / length)
@@ -350,11 +475,28 @@ export function Avatar() {
       if (progress >= 1) m.cheerStart = null
     }
 
+    // The end of the trail: the balloons come out as soon as it is complete, and the dance
+    // starts once the avatar has arrived and cheered. It keeps going until the visitor moves
+    // on, and it waits while the resume covers the world.
+    const holdTo = m.party ? 1 : 0
+    const danceTo = m.party && !reducedMotion && !m.trip && m.cheerStart === null && !m.cheerQueued ? 1 : 0
+    m.hold = reducedMotion ? holdTo : approach(m.hold, holdTo, elapsed, HOLD_MS)
+    m.dance = approach(m.dance, danceTo, elapsed, DANCE_EASE_MS)
+    const dancing = m.dance > 0 && !m.paused
+    if (dancing) m.danceTime += elapsed
+
     m.heading = turnToward(m.heading, aim, elapsed)
     pose(rig, m, lift, hop)
 
     // The canvas only draws on demand, so ask for another frame while anything is moving.
-    m.moving = m.trip !== null || m.cheerStart !== null || m.cheerQueued || m.heading !== aim
+    m.moving =
+      m.trip !== null ||
+      m.cheerStart !== null ||
+      m.cheerQueued ||
+      m.heading !== aim ||
+      m.hold !== holdTo ||
+      m.dance !== danceTo ||
+      dancing
     if (m.moving) invalidate()
   })
 

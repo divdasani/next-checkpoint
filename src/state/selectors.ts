@@ -1,7 +1,9 @@
 import {
+  DISCOVERY_IDS,
   MISSION_IDS,
   READINESS_IDS,
   SOURCE_IDS,
+  type DiscoveryId,
   type GameState,
   type MissionId,
   type ReadinessId,
@@ -11,8 +13,8 @@ import {
 // Read-only questions about the state. Views and the reducer share these,
 // so "is this mission complete?" has exactly one answer everywhere.
 
-export function connectedCount(state: GameState): number {
-  return state.network.connected.filter(Boolean).length
+export function missingDiscovery(state: GameState): DiscoveryId[] {
+  return DISCOVERY_IDS.filter((id) => !state.discover.steps[id])
 }
 
 export function missingSources(state: GameState): SourceId[] {
@@ -23,14 +25,20 @@ export function missingReadiness(state: GameState): ReadinessId[] {
   return READINESS_IDS.filter((id) => !state.launch.ready[id])
 }
 
+export function connectedCount(state: GameState): number {
+  return state.network.connected.filter(Boolean).length
+}
+
 export function isMissionComplete(state: GameState, mission: MissionId): boolean {
   switch (mission) {
-    case 'network':
-      return state.network.connected.every(Boolean)
+    case 'discover':
+      return state.discover.pitched
     case 'signal':
       return state.signal.feedOn
     case 'launch':
       return state.launch.launched
+    case 'network':
+      return state.network.connected.every(Boolean)
   }
 }
 
@@ -38,10 +46,12 @@ export function completedMissions(state: GameState): MissionId[] {
   return MISSION_IDS.filter((id) => isMissionComplete(state, id))
 }
 
+/** How many checkpoints are complete. This is also the number of stamps in the passport. */
 export function completedCount(state: GameState): number {
   return completedMissions(state).length
 }
 
+/** True once every checkpoint is complete: the trail is finished and the passport is full. */
 export function allComplete(state: GameState): boolean {
   return completedCount(state) === MISSION_IDS.length
 }
@@ -52,11 +62,13 @@ export function isWorldFresh(state: GameState): boolean {
     state.activeMission === null &&
     state.card === null &&
     state.avatarStop === 'home' &&
-    connectedCount(state) === 0 &&
+    missingDiscovery(state).length === DISCOVERY_IDS.length &&
+    !state.discover.pitched &&
     missingSources(state).length === SOURCE_IDS.length &&
     !state.signal.feedOn &&
     missingReadiness(state).length === READINESS_IDS.length &&
-    !state.launch.launched
+    !state.launch.launched &&
+    connectedCount(state) === 0
   )
 }
 
@@ -90,11 +102,12 @@ export function focusMission(state: GameState): MissionId | null {
   return panelKind(state) === 'mission' ? state.activeMission : null
 }
 
-export const TOUR_CHAPTER_COUNT = 5
+/** The opening, one chapter per checkpoint, and the finale. */
+export const TOUR_CHAPTER_COUNT = MISSION_IDS.length + 2
 
-/** 0 = opening, 1 to 3 = missions in order, 4 = finale. */
+/** 0 = opening, 1 to 4 = checkpoints in trail order, 5 = finale. */
 export function tourChapter(state: GameState): number {
-  if (state.phase === 'finale') return 4
+  if (state.phase === 'finale') return TOUR_CHAPTER_COUNT - 1
   const current = state.card ?? state.activeMission
   if (current) return MISSION_IDS.indexOf(current) + 1
   return completedCount(state)

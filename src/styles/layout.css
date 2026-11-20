@@ -329,3 +329,25 @@
     }
   }
 }
+
+/* The last frame of a tall Film take. The finale holds the full passport, the empty Roblox
+   space, and the closing line, which is more than any card shows, and nobody can scroll a
+   recording. So the sheet grows to fit what the finale says, and the camera eases the island
+   a little smaller (see world/CameraRig.tsx), the same way it makes room for a reading
+   moment on a short phone. The sheet never drops below its usual height, and 21rem always
+   stays free for the top bar, the island, and the passport row. */
+@media (max-aspect-ratio: 2 / 3) {
+  .app-shell[data-mode='film'][data-panel='finale'] .hud {
+    grid-template-rows: auto minmax(0, 1fr) auto minmax(var(--sheet-height), auto);
+  }
+
+  .app-shell[data-mode='film'][data-panel='finale'] .stage-panel {
+    max-height: calc(100vh - 21rem);
+  }
+
+  @supports (height: 1dvh) {
+    .app-shell[data-mode='film'][data-panel='finale'] .stage-panel {
+      max-height: calc(100dvh - 21rem);
+    }
+  }
+}

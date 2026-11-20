@@ -1,4 +1,4 @@
-import { missionContent } from '../content/content.ts'
+import { content, missionContent } from '../content/content.ts'
 import { useGame } from '../state/GameContext.tsx'
 import { isTourBusy, missionStatus, type MissionStatus } from '../state/selectors.ts'
 import { MISSION_IDS } from '../state/types.ts'
@@ -12,14 +12,14 @@ const STATUS_WORD: Record<MissionStatus, string> = {
 }
 
 /**
- * The HTML labels that float just above the three main buildings.
+ * The HTML labels that float just above the four main buildings.
  *
  * The 3D canvas owns each pin's position: it writes a CSS transform on the outer
  * <div class="pin"> and sets data-placed="true" while the building is on screen
  * (see world/PinProjector.tsx). This component only decides what the label shows and
  * what a click does, which is SELECT_MISSION, the same as clicking the building.
  *
- * Pins are left out of the Tab order on purpose. The mission chips under the world do the
+ * Pins are left out of the Tab order on purpose. The passport strip under the world does the
  * same job in a fixed, readable order, so keyboard users are not sent hopping around the map.
  * While the guided sequence owns the world, and in Film mode, pins are plain labels.
  */
@@ -47,7 +47,7 @@ export function DestinationPins() {
               type="button"
               className="pin__button"
               tabIndex={-1}
-              aria-label={`Mission ${mission.number}: ${mission.place}, ${STATUS_WORD[status]}`}
+              aria-label={`${content.trail.checkpoint} ${mission.number}, ${mission.checkpoint.name}: ${mission.place}, ${STATUS_WORD[status]}`}
               aria-current={current ? 'true' : undefined}
               onClick={() => dispatch({ type: 'SELECT_MISSION', mission: id })}
             >

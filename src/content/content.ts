@@ -1,30 +1,62 @@
-import type { MissionId, ReadinessId, SourceId } from '../state/types.ts'
+import type { DiscoveryId, MissionId, ReadinessId, SourceId } from '../state/types.ts'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Factual content for Next Checkpoint. This is the only file that holds career
 // claims, so editing the words on the site means editing this file.
+//
+// The site is a small trail through Annika's career: four checkpoints, each with a
+// short mission, a passport stamp, and the skills that work demonstrates.
 //
 // Keep these distinctions when editing:
 //  - $700M is acquisition-billing scope and $360M is additional revenue the
 //    framework accommodated. Neither is revenue generated or personally processed.
 //  - The gaming project was an app concept and a pitch. It was not built, tested,
 //    or shipped.
-//  - The missions are illustrations. The "Real experience" cards are the facts.
+//  - The missions are illustrations. The checkpoint cards are the facts.
+//  - Roblox Trails is the product idea in Annika's application. She is an applicant,
+//    and the Roblox stamp at the end of the trail stays empty.
 //  - Public contact is LinkedIn only. Do not add a phone number or personal email.
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** One headline result on a checkpoint card: the value is shown large, the label beside it. */
+export interface Metric {
+  value: string
+  label: string
+}
+
+/** What a checkpoint says about the real work: the problem, the result, and the skills. */
+export interface Checkpoint {
+  /** Name of the checkpoint on the trail. */
+  name: string
+  /** The word on its passport stamp. */
+  stamp: string
+  /** Where the work happened. */
+  source: string
+  /** The problem, in one line. */
+  challenge: string
+  /** What Annika did, as a few short steps, where the story has them. */
+  flow?: readonly string[]
+  /** The partner teams that came together for the launch (Ship only). */
+  teams?: readonly string[]
+  /** The headline results, shown large. Read together, value then label, each is one statement. */
+  metrics: readonly Metric[]
+  /** One line of takeaway under the results, where the checkpoint has one. */
+  theme?: string
+  /** Skills this work demonstrates. They unlock together with the stamp. */
+  skills: readonly string[]
+}
 
 export interface Evidence {
   /** Shown under the "Real experience" label, in Annika's words. */
   quote: string
-  /** Two short supporting labels. */
-  labels: readonly [string, string]
-  /** One line that keeps the claim precise. */
-  note: string
+  /** One more line of detail under the statement, where Annika wants one. */
+  note?: string
 }
 
 export interface MissionContent {
   id: MissionId
-  number: 1 | 2 | 3
+  /** Position on the trail. */
+  number: 1 | 2 | 3 | 4
   title: string
   /** Compact title for narrow screens. */
   shortTitle: string
@@ -33,10 +65,9 @@ export interface MissionContent {
   objective: string
   /** How to act, for both the 3D world and the HTML buttons. */
   how: string
-  /** Makes clear that the mini-game is an illustration. */
-  illustrationNote: string
   /** Status line once the mission is complete. */
   completeLine: string
+  checkpoint: Checkpoint
   evidence: Evidence
 }
 
@@ -70,48 +101,90 @@ const intro = {
   title: 'Next Checkpoint',
   opening: 'Every level is a real problem I helped solve. Ready?',
   blurb:
-    'A small playable resume. Visit three destinations, finish a short mission at each, and see the real work behind it.',
+    'A small playable resume. Follow four checkpoints, collect a passport stamp at each, and see the real work behind it.',
   startLabel: 'Start playing',
   tourLabel: 'Guided tour',
-  tourNote: 'Hands-free, about 55 seconds.',
+  tourNote: 'Hands-free, about 80 seconds.',
   resumeLabel: 'Read resume',
 } as const
 
 const overview = {
-  heading: 'Choose a destination',
-  body: 'Click a building in the world or pick a mission here. Any order works.',
-  progress: (done: number) => `${done} of 3 checkpoints reached`,
+  heading: 'Choose a checkpoint',
+  body: 'Click a building in the world or pick a checkpoint here. They are numbered as a trail, but any order works.',
+  progress: (done: number) => `${done} of 4 stamps collected`,
 } as const
 
-const network: MissionContent & {
-  companyLabels: readonly string[]
-  progress: (connected: number) => string
-} = {
-  id: 'network',
-  number: 1,
-  title: 'Eight Worlds, One System',
-  shortTitle: 'Eight Worlds',
-  place: 'The Hub',
-  objective: 'Connect all eight company blocks to the central hub.',
-  how: 'Click a block in the world, or use the buttons.',
-  illustrationNote: 'Illustration only. The blocks are generic stand-ins, not the actual companies.',
-  completeLine: 'All eight connected. The hub is live.',
-  companyLabels: [
-    'Company A',
-    'Company B',
-    'Company C',
-    'Company D',
-    'Company E',
-    'Company F',
-    'Company G',
-    'Company H',
+/** The trail and its passport: the product idea the site demonstrates. */
+const trail = {
+  /** Who curated the trail, shown like the creator of a Trail. */
+  byline: 'Trail by Annika Dasani',
+  themes: 'Product · Operations · Gaming · Technology',
+  name: "Annika Dasani's Career Trail",
+  /** A small profile of the trail for the passport view. */
+  profile: [
+    { term: 'Trail', detail: 'How I Got Here' },
+    { term: 'Stops', detail: '4' },
+    { term: 'Theme', detail: 'Career journey' },
   ],
-  progress: (connected) => `${connected} of 8 connected`,
+  /** What the site is for. It sits right after the independence credit. */
+  demo: 'Built to demonstrate Roblox Trails, the product idea from my APM application.',
+  passport: 'Passport',
+  /** The short count on the passport button. */
+  count: (done: number) => `${done}/4`,
+  checkpoint: 'Checkpoint',
+  checkpointComplete: 'Checkpoint complete',
+  stampEarned: (stamp: string) => `${stamp} stamp earned`,
+  skillsUnlocked: 'Skills unlocked',
+  /** Status words for a stamp space. */
+  stamped: 'Stamped',
+  notStamped: 'Not stamped yet',
+  complete: 'Trail complete',
+  completeCount: '4 of 4 checkpoints completed',
+  passportComplete: 'Passport complete. 4 stamps collected.',
+  nextLabel: 'Next checkpoint',
+  nextNote: 'Ready for the next adventure.',
+  /**
+   * The sticker on the Roblox space once the trail is complete. Annika asked for it on
+   * 19 November 2026, as a wish. It is not a result: she is applying, the space under the
+   * sticker is still not stamped, and the line beside it says that she is applying.
+   */
+  sticker: 'Hired!',
+} as const
+
+const discover: MissionContent & {
+  steps: Readonly<Record<DiscoveryId, string>>
+  pitchAction: string
+  blocked: (missing: readonly string[]) => string
+  nextAction: (label: string) => string
+} = {
+  id: 'discover',
+  number: 1,
+  title: 'Spot the Gap',
+  shortTitle: 'Spot the Gap',
+  place: 'The Pitch Deck',
+  objective: 'Do the research, name the unmet need, and shape the concept. Then pitch it.',
+  how: 'Click a step in the world, or use the buttons.',
+  completeLine: 'Research, need, concept. The pitch is in.',
+  steps: {
+    research: 'Research',
+    need: 'Unmet need',
+    concept: 'Concept',
+  },
+  pitchAction: 'Pitch the concept',
+  blocked: (missing) => `Not ready to pitch yet. Still to do: ${missing.join(', ')}.`,
+  nextAction: (label) => `Work on ${label}`,
+  checkpoint: {
+    name: 'Discover',
+    stamp: 'Discovery',
+    source: '3 Day Startup',
+    challenge: 'Accessibility and language barriers leave some players out of online play.',
+    flow: ['Research', 'Identify need', 'Develop concept', 'Pitch'],
+    metrics: [{ value: '2nd place', label: 'for the concept, pitched to investors' }],
+    skills: ['User Research', 'Product Ideation'],
+  },
   evidence: {
     quote:
-      'At Microsoft, I built a framework to centralize $700M in acquisition billing across eight companies. It enabled an additional $360M in revenue to be absorbed within three months.',
-    labels: ['Scalable processes', 'Cross-functional execution'],
-    note: '$700M is the acquisition billing the framework centralized, and $360M is additional revenue it accommodated. Neither figure is revenue I generated.',
+      'At 3 Day Startup, I researched gaps in online gaming and developed an app concept to connect underserved players, including people facing accessibility or language barriers. I pitched the concept to investors and placed second.',
   },
 }
 
@@ -128,7 +201,6 @@ const signal: MissionContent & {
   place: 'The Signal Station',
   objective: 'Switch on all three data sources, then start the automated feed.',
   how: 'Click a source in the world, or use the buttons.',
-  illustrationNote: 'Illustration only. The bars are not real data or records.',
   completeLine: 'Three sources, one dashboard. The signal is clear.',
   sources: {
     revenue: 'Revenue',
@@ -138,11 +210,22 @@ const signal: MissionContent & {
   feedAction: 'Start automated feed',
   blocked: (missing) => `The automated feed needs all three sources. Still off: ${missing.join(', ')}.`,
   nextAction: (label) => `Switch on ${label}`,
+  checkpoint: {
+    name: 'Build',
+    stamp: 'Builder',
+    source: 'Microsoft',
+    challenge: 'Reporting across eight acquired companies took hours of manual work every week.',
+    flow: ['Listen', 'Define', 'Build', 'Measure'],
+    metrics: [
+      { value: '~6 hours', label: 'of manual reporting saved every week' },
+      { value: '8', label: 'acquired companies supported' },
+    ],
+    skills: ['Requirements Definition', 'Power BI', 'Success Metrics'],
+  },
   evidence: {
     quote:
       'I interviewed users to understand reporting needs, then designed a self-service Power BI dashboard across eight acquired companies. It eliminated approximately six hours of weekly manual reporting.',
-    labels: ['User discovery', 'Analytics'],
-    note: 'The real dashboard combined revenue, invoice volume, and customer inquiries. The bars in this world are illustrative.',
+    note: 'The real dashboard combined revenue, invoice volume, and customer inquiries to proactively spot risks and trends.',
   },
 }
 
@@ -159,8 +242,6 @@ const launch: MissionContent & {
   place: 'The Launch Arch',
   objective: 'Get all three readiness checks to Ready, then launch.',
   how: 'Click a check in the world, or use the buttons.',
-  illustrationNote:
-    'These steps represent coordinated delivery. They are not the exact historical project sequence.',
   completeLine: 'All checks ready. The arch is lit.',
   readiness: {
     requirements: 'Requirements',
@@ -170,11 +251,60 @@ const launch: MissionContent & {
   launchAction: 'Launch',
   blocked: (missing) => `Not ready to launch yet. Still to prepare: ${missing.join(', ')}.`,
   nextAction: (label) => `Prepare ${label}`,
+  checkpoint: {
+    name: 'Ship',
+    stamp: 'Launch',
+    source: 'Microsoft',
+    challenge: 'Two global tax-rate changes had to roll out across teams and systems.',
+    teams: ['Engineering', 'Tax', 'Sales', 'Business'],
+    metrics: [{ value: '2 global launches', label: 'of tax-rate changes, coordinated across teams' }],
+    skills: ['User Acceptance Testing', 'Roadmap Planning', 'Cross-Functional Execution'],
+  },
   evidence: {
     quote:
       'I translated business needs into engineering requirements and acceptance criteria, and coordinated roadmaps, dependencies, testing, and communications for two global tax-rate change rollouts.',
-    labels: ['Acceptance criteria', 'Launch execution'],
     note: 'Both rollouts were coordinated with engineering, tax, sales, and business partners.',
+  },
+}
+
+const network: MissionContent & {
+  companyLabels: readonly string[]
+  progress: (connected: number) => string
+} = {
+  id: 'network',
+  number: 4,
+  title: 'Eight Worlds, One System',
+  shortTitle: 'Eight Worlds',
+  place: 'The Hub',
+  objective: 'Connect all eight company blocks to the central hub.',
+  how: 'Click a block in the world, or use the buttons.',
+  completeLine: 'All eight connected. The hub is live.',
+  companyLabels: [
+    'Company A',
+    'Company B',
+    'Company C',
+    'Company D',
+    'Company E',
+    'Company F',
+    'Company G',
+    'Company H',
+  ],
+  progress: (connected) => `${connected} of 8 connected`,
+  checkpoint: {
+    name: 'Scale',
+    stamp: 'Scale',
+    source: 'Microsoft',
+    challenge: '$700M in acquisition billing sat across eight acquired companies.',
+    metrics: [
+      { value: '$700M', label: 'in acquisition billing centralized across 8 companies' },
+      { value: '+$360M', label: 'in emergent revenue absorbed within 3 months' },
+    ],
+    theme: 'Building something once is different from building something that can scale.',
+    skills: ['Scalable Processes', 'Operational Strategy'],
+  },
+  evidence: {
+    quote:
+      'At Microsoft, I built a framework to centralize $700M in acquisition billing across eight companies. It enabled an additional $360M in revenue to be absorbed within three months.',
   },
 }
 
@@ -182,8 +312,6 @@ const finale = {
   heading: 'Next checkpoint: Roblox.',
   motivation:
     "I've built systems that help businesses work together. Now I want to help build experiences that bring people together.",
-  gaming:
-    'It connects to an idea I pitched at 3 Day Startup: an app concept for connecting underserved players, including people facing accessibility or language barriers. The pitch placed second.',
   applying: "Applying for Roblox's Associate Product Manager role.",
   resumeLabel: 'Read resume',
   linkedInLabel: 'LinkedIn',
@@ -290,7 +418,8 @@ export const content = {
   identity,
   intro,
   overview,
-  missions: { network, signal, launch },
+  trail,
+  missions: { discover, signal, launch, network },
   cardLabels,
   finale,
   resume,
@@ -299,7 +428,7 @@ export const content = {
 
 export type Content = typeof content
 
-/** The shared fields of a mission, for code that treats all three alike. */
+/** The shared fields of a mission, for code that treats all four alike. */
 export function missionContent(id: MissionId): MissionContent {
   return content.missions[id]
 }

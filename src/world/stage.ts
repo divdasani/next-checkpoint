@@ -90,15 +90,16 @@ function makePinRef(id: MissionId) {
 }
 
 /**
- * Stable ref callbacks for the three destination labels.
+ * Stable ref callbacks for the four destination labels.
  * Usage: `<div ref={PIN_REFS.network} className="pin">` wrapping the pin's button. The canvas
  * then moves that element with a CSS transform and sets `data-placed="true"` once it has a
  * position on screen.
  */
 export const PIN_REFS: Record<MissionId, (element: HTMLElement | null) => void> = {
-  network: makePinRef('network'),
+  discover: makePinRef('discover'),
   signal: makePinRef('signal'),
   launch: makePinRef('launch'),
+  network: makePinRef('network'),
 }
 
 export function getPinElements(): ReadonlyMap<MissionId, HTMLElement> {

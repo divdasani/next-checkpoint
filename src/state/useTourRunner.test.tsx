@@ -113,9 +113,10 @@ function expectFinale(): void {
   const end = state()
   expect(end.tour.status).toBe('done')
   expect(end).toMatchObject({ phase: 'finale', card: null })
-  expect(end.network.connected.filter(Boolean)).toHaveLength(COMPANY_COUNT)
+  expect(end.discover.pitched).toBe(true)
   expect(end.signal.feedOn).toBe(true)
   expect(end.launch.launched).toBe(true)
+  expect(end.network.connected.filter(Boolean)).toHaveLength(COMPANY_COUNT)
 }
 
 beforeEach(() => {
@@ -152,13 +153,13 @@ describe('playing the sequence', () => {
 
     advance(1)
     expect(state().tour.cursor).toBe(1)
-    expect(state()).toMatchObject({ activeMission: 'network', avatarStop: 'network' })
+    expect(state()).toMatchObject({ activeMission: 'discover', avatarStop: 'discover' })
 
     advance(SECOND - FIRST - 1)
     expect(state().tour.cursor).toBe(1)
     advance(1)
     expect(state().tour.cursor).toBe(2)
-    expect(state().network.connected.filter(Boolean)).toHaveLength(1)
+    expect(state().discover.steps).toEqual({ research: true, need: false, concept: false })
   })
 
   it('sends every step exactly once, in order, each at its scripted time', () => {
@@ -285,13 +286,14 @@ describe('Restart', () => {
     const sentBefore = fromRunner.length
     expect(state().tour).toEqual({ status: 'running', cursor: 0, runId: firstRun + 1 })
     expect(state()).toMatchObject({ activeMission: null, avatarStop: 'home', card: null, cheers: 0 })
+    expect(state().discover).toEqual({ steps: { research: false, need: false, concept: false }, pitched: false })
     expect(state().network.connected.some(Boolean)).toBe(false)
     expect(vi.getTimerCount()).toBe(1)
 
     advance(FIRST - 1)
     expect(state().tour.cursor).toBe(0)
     advance(1)
-    expect(state()).toMatchObject({ activeMission: 'network' })
+    expect(state()).toMatchObject({ activeMission: 'discover' })
 
     advance(TOUR_DURATION_MS - FIRST)
     expectFinale()
@@ -346,7 +348,7 @@ describe('leaving and coming back', () => {
     advance(TOUR_DURATION_MS)
     expect(fromRunner).toHaveLength(sent)
     // The visitor now owns the world the tour left behind.
-    expect(state().activeMission).toBe('network')
+    expect(state().activeMission).toBe('discover')
 
     press({ type: 'START_TOUR', mode: 'tour' })
     advance(FIRST - 1)
@@ -436,7 +438,7 @@ describe('when the browser tab is hidden', () => {
     advance(FIRST - 1)
     expect(state().tour.cursor).toBe(0)
     advance(1)
-    expect(state()).toMatchObject({ activeMission: 'network' })
+    expect(state()).toMatchObject({ activeMission: 'discover' })
     advance(TOUR_DURATION_MS - FIRST)
     expectFinale()
     // Nothing was lost or shortened by the wait: every step ran once, on the scripted schedule.
@@ -509,7 +511,7 @@ describe('a click that lands in the same instant as a step', () => {
     press(PLAY)
     advance(0)
     expect(state().tour.cursor).toBe(1)
-    expect(state().activeMission).toBe('network')
+    expect(state().activeMission).toBe('discover')
     // The rest of the schedule is not shifted.
     advance(SECOND - FIRST - 1)
     expect(state().tour.cursor).toBe(1)

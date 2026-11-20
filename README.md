@@ -1,6 +1,8 @@
 # Next Checkpoint
 
-Next Checkpoint is a small interactive resume for Annika Dasani, who is applying for Roblox's Associate Product Manager role. A visitor sees one blocky island, travels to three destinations, and finishes a short mission at each one. Every mission ends on a "Real experience" card that states the actual accomplishment behind it. The same sequence can also play by itself as a Guided tour or in Film mode for screen recording, and the full resume is one click away at all times.
+Next Checkpoint is a small interactive resume for Annika Dasani, who is applying for Roblox's Associate Product Manager role. It is laid out as a miniature trail, to demonstrate Roblox Trails, the product idea from her application: a short themed journey with checkpoints and a passport that collects a stamp at each one.
+
+A visitor sees one blocky island, travels to four checkpoints (Discover, Build, Ship, Scale), and finishes a short mission at each one. Every mission ends on a checkpoint card: a passport stamp, the headline results, the skills that work used, and the "Real experience" statement of the actual accomplishment behind it. After the fourth stamp the trail is complete: the avatar walks to the middle of the island and dances with a bunch of balloons, and one more stamp space, for Roblox, is shown. That space is never stamped. It carries a "Hired!" sticker, which Annika asked for as a wish, next to the line that says she is applying. The same sequence can also play by itself as a Guided tour or in Film mode for screen recording, and the full resume is one click away at all times.
 
 It is a static site built with React, TypeScript, Vite, three.js, and React Three Fiber. It has no backend.
 
@@ -48,20 +50,43 @@ Every career fact and almost all visible wording live in one file, `src/content/
 | --- | --- |
 | `identity` | The name, the role line ("Associate Product Manager applicant"), and the LinkedIn address. |
 | `intro` | The title, the opening line, a short blurb, and the labels of the three opening buttons. `tourNote` states how long the tour takes. |
-| `overview` | The map panel's heading and text, and the "2 of 3 checkpoints reached" line. |
-| `missions` | One entry each for `network`, `signal`, and `launch`: title, place name, objective, how-to line, illustration note, the names of its objects, and `evidence`. |
+| `overview` | The map panel's heading and text, and the "2 of 4 stamps collected" line. |
+| `trail` | The words of the trail and its passport: the byline ("Trail by Annika Dasani"), the themes line, the trail's name, the three profile facts shown in the passport, the sentence that says what the site demonstrates (`demo`), and the passport's labels and counts. |
+| `missions` | One entry each for `discover`, `signal`, `launch`, and `network`, in trail order: number, title, place name, objective, how-to line, the names of its objects, `checkpoint`, and `evidence`. |
 | `cardLabels` | "Real experience" and the two Continue button labels. |
-| `finale` | "Next checkpoint: Roblox.", the motivation, the gaming-concept line, the "applying" line, and the button labels. |
+| `finale` | "Next checkpoint: Roblox.", the motivation, the "applying" line, and the button labels. |
 | `resume` | The readable resume: summary, skills, sections with entries and bullets, education, and `publicPdf`. |
 | `credit` | The independent-project line in the footer. |
 
-Each mission's `evidence` holds the card: a `quote`, two `labels`, and a `note` that keeps the claim precise. The three quotes are fixed word for word.
+Each mission has two parts for its card.
 
-| Mission | Place | Card quote |
-| --- | --- | --- |
-| 1. Eight Worlds, One System | The Hub | "At Microsoft, I built a framework to centralize $700M in acquisition billing across eight companies. It enabled an additional $360M in revenue to be absorbed within three months." |
-| 2. Find the Signal | The Signal Station | "I interviewed users to understand reporting needs, then designed a self-service Power BI dashboard across eight acquired companies. It eliminated approximately six hours of weekly manual reporting." |
-| 3. Launch Day | The Launch Arch | "I translated business needs into engineering requirements and acceptance criteria, and coordinated roadmaps, dependencies, testing, and communications for two global tax-rate change rollouts." |
+- `checkpoint` is the trail side: the checkpoint's `name`, the word on its `stamp`, where the work happened (`source`), the problem in one line (`challenge`), the headline results (`metrics`), and the `skills` that unlock with the stamp. A checkpoint can also have a short row of steps (`flow`), the partner teams (`teams`), or one takeaway line (`theme`).
+- `evidence` is the "Real experience" statement: a `quote`, and for Build and Ship a `note`, one more line of detail under it. The four quotes are fixed word for word.
+
+| Checkpoint | Mission | Place | Stamp | Card quote |
+| --- | --- | --- | --- | --- |
+| 1. Discover | Spot the Gap | The Pitch Deck | Discovery | "At 3 Day Startup, I researched gaps in online gaming and developed an app concept to connect underserved players, including people facing accessibility or language barriers. I pitched the concept to investors and placed second." |
+| 2. Build | Find the Signal | The Signal Station | Builder | "I interviewed users to understand reporting needs, then designed a self-service Power BI dashboard across eight acquired companies. It eliminated approximately six hours of weekly manual reporting." |
+| 3. Ship | Launch Day | The Launch Arch | Launch | "I translated business needs into engineering requirements and acceptance criteria, and coordinated roadmaps, dependencies, testing, and communications for two global tax-rate change rollouts." |
+| 4. Scale | Eight Worlds, One System | The Hub | Scale | "At Microsoft, I built a framework to centralize $700M in acquisition billing across eight companies. It enabled an additional $360M in revenue to be absorbed within three months." |
+
+The quotes for Build, Ship, and Scale come from the project brief. The Discover quote was added with the trail on 19 November 2026. It is the resume's 3 Day Startup bullet in the first person, and a test compares the two.
+
+The numbers are the order of the trail, which the Guided tour and Film mode follow. A visitor may play the checkpoints in any order.
+
+In normal play a card shows everything. While the Guided tour or Film mode plays, a card shows the stamp, the results, and the skills, and leaves out the full statement and its note, so that it can be read in the time it is on screen.
+
+### The passport
+
+The passport is the trail's progress, and it is always on screen. The row under the world has a Passport button with the count (0/4 to 4/4) and four stamp spaces. A space is empty until its checkpoint is complete, and then it shows that checkpoint's stamp. The Passport button opens the passport view: the trail's name and byline, the four stamps with the skills they unlocked, and one more space, for Roblox.
+
+Three things about it are deliberate.
+
+- **The Roblox space is never stamped.** It marks where Annika hopes to go next. Nothing on the site can turn it into a stamp, and no sentence may say that it was earned. Once the trail is complete it carries a "Hired!" sticker, on the ending and in the passport view. Annika asked for the sticker on 19 November 2026. Asked first whether she had been hired, she said no: it is a wish, and the line "Applying for Roblox's Associate Product Manager role." stays beside it. The passport still says "Not stamped yet" under it. The sticker's word is `trail.sticker` in `content.ts`.
+- **There are no popularity figures.** The trail shows no followers, likes, ratings, or reviews, because there are none.
+- **Nothing is saved.** The stamps live in the page's state. Reloading the page starts with an empty passport. The site still uses no cookies and no browser storage.
+
+The stamp art is drawn in code in `src/ui/Stamp.tsx`, and the row and the view are in `src/ui/Passport.tsx`. The physical, QR-coded passport from the Roblox Trails idea is not part of this site.
 
 Two things live elsewhere. The browser tab title and the link-preview description are in `index.html`. Interface labels that are not career content, such as Back to map or Start take, are in the components under `src/ui/`.
 
@@ -69,17 +94,19 @@ Two things live elsewhere. The browser tab title and the link-preview descriptio
 
 `src/content/content.test.ts` holds its own copy of the confirmed career facts and of the card wording from the project brief, and compares the content with them. When wording drifts, `npm test` fails. These are the rules it enforces.
 
-- **Exact card wording.** Each `evidence.quote` must match the brief character for character and keep exactly its two labels. The mission titles, the three data-source names, the three readiness names, "Real experience", the opening button labels, and "Next checkpoint: Roblox." are fixed the same way.
+- **Exact card wording.** Each `evidence.quote` must match the confirmed wording character for character. The line under each statement is fixed as well: Build and Ship have one, and Discover and Scale have none. The mission titles, the checkpoint names, the words on the stamps, where each piece of work happened, the skills on each card, the headline results, the three pitch-deck steps, the three data-source names, the three readiness names, "Real experience", the opening button labels, and "Next checkpoint: Roblox." are fixed the same way.
+- **The trail and its passport.** The byline, the themes line, and the sentence that says what the site demonstrates are fixed. The passport counts from 0 of 4 to 4 of 4. Followers, ratings, likes, and reviews fail.
+- **Lines Annika removed stay out.** On 19 November 2026 she asked for the four "Illustration only" lines under the missions to be removed, and the lines under the Discover and Scale statements ("It was not built or released." and "Neither figure is revenue I generated."). She wrote the line under the Build statement herself. The test fails if an illustration line comes back or one of these lines changes. The statements still carry the precision in their own words: "app concept", "billing", and "absorbed" are checked there.
 - **Confirmed numbers only.** Every number in the cards, the finale, and the resume must be on the test's list of confirmed figures. The only dollar amounts allowed anywhere are $700M and $360M. A sentence with $700M must say "billing". A sentence with $360M must say "absorbed" or "accommodated". The word "generated" may appear only in a sentence that negates it.
-- **The gaming project is a concept.** Any sentence that contains "app" or "gaming" must also contain "concept". Wording such as "built an app", "shipped", "app users", or "downloads" fails.
-- **Roblox.** The role line must stay "Associate Product Manager applicant". Every sentence that names Roblox must be the ending line, or mention applying, or state independence, or say "Roblox-inspired". Wording that implies a job, an offer, or an official Roblox page fails.
-- **No invented results.** Percentages, user counts, A/B tests, retention or conversion claims, testimonials, and AI or machine-learning mentions fail. Skills must come from the source resume's list. The resume must list exactly Microsoft, 3 Day Startup, and Mercedes-Benz U.S. International, with their confirmed roles, dates, and places.
+- **The gaming project is a concept.** Any sentence that contains "app" or "gaming" must also contain "concept". Wording such as "built an app", "shipped", "app users", or "downloads" fails. One line is exempt: the themes under the byline ("Product · Operations · Gaming · Technology"), which Annika asked for. It lists interests, claims nothing, and is pinned word for word.
+- **Roblox.** The role line must stay "Associate Product Manager applicant". Every sentence that names Roblox must be the ending line, or mention applying, or state independence, or say "Roblox-inspired". Wording that implies a job, an offer, or an official Roblox page fails, and so does wording that says a Roblox stamp was earned. The one exception is the sticker described under "The passport": `trail.sticker` must be exactly "Hired!", it is the only place the word may stand alone, and no sentence may say that she was hired. "Roblox Trails" may appear in one sentence only, the one that calls it the product idea from her application.
+- **No invented results.** Percentages, user counts, A/B tests, retention or conversion claims, testimonials, and AI or machine-learning mentions fail. The resume's skills must come from the source resume's list. A skill on a checkpoint card must be on that list, or be one of four that are allowed on the cards only: Product Ideation and Operational Strategy, which Annika confirmed on 19 November 2026, and Cross-Functional Execution and Scalable Processes, which the brief already used as card labels. The test also keeps those four off the resume's own list. The resume must list exactly Microsoft, 3 Day Startup, and Mercedes-Benz U.S. International, with their confirmed roles, dates, and places.
 - **No authorship claim.** Nothing may say that Annika built, coded, or user-tested this site.
 - **Privacy scan.** The test reads every `.ts`, `.tsx`, and `.css` file under `src/`, plus `index.html` and the text files in `public/`, and fails on anything shaped like a phone number, an email address, or a `tel:` or `mailto:` link. It fails if a PDF or Word file sits in `public/` without being the configured public PDF, and if a file named like the source resume or a reference image appears in `src/` or `public/`. The only web addresses allowed in the content are the LinkedIn profile and the Roblox job posting.
 
 When a check fails after an edit, look at the edit first. Change the test only when the fact itself has changed and Annika has confirmed the new one. Then update the matching expectation in the same change, for example by adding the new figure to the `amounts` list, so the test keeps describing the truth. Do not delete a check to get a passing run.
 
-Two smaller ties are worth knowing. `intro.tourNote` says "about 55 seconds", and `src/state/timeline.test.ts` fails if that number is more than 5 seconds from the real length. If you add a new text-building function to `content.ts` (like `progress` or `blocked`), the content test "this test reads every text-building function in the content file" fails until you add the function to its list and the function's output to `builtText`, so the wording rules read the new text too.
+Two smaller ties are worth knowing. `intro.tourNote` says "about 80 seconds", and `src/state/timeline.test.ts` fails if that number is more than 5 seconds from the real length. If you add a new text-building function to `content.ts` (like `progress` or `blocked`), the content test "this test reads every text-building function in the content file" fails until you add the function to its list and the function's output to `builtText`, so the wording rules read the new text too.
 
 ### The resume has two renderers
 
@@ -93,9 +120,9 @@ Both read `content.resume`. Editing words, bullets, skills, or sections in `cont
 
 | Field | Now | Meaning |
 | --- | --- | --- |
-| `skin` | `#ffd166` | Head and forearms. Placeholder. |
-| `hair` | `#2b2f45` | Hair color. Placeholder. |
-| `hairStyle` | `'bob'` | `'bob'` (chin length with side locks), `'short'` (cropped close), or `'ponytail'` (cropped, with a knot on top and a tail behind). |
+| `skin` | `#d7a16b` | Head and forearms. Tan, Annika's choice. |
+| `hair` | `#19191e` | Hair color. Black, Annika's choice. |
+| `hairStyle` | `'long'` | `'bob'` (chin length with side locks), `'long'` (the bob grown out, with a fall down the back and two strands over the shoulders), `'short'` (cropped close), or `'ponytail'` (cropped, with a knot on top and a tail behind). |
 | `top` | `#18b8a6` | The teal top: torso and sleeves. |
 | `trousers` | `#22335c` | Navy trousers. |
 | `shoes` | `#ffffff` | White shoes. |
@@ -103,11 +130,11 @@ Both read `content.resume`. Editing words, bullets, skills, or sections in `cont
 | `accessoryStyle` | `'headband'` | `'headband'`, `'bow'`, or `'none'`. |
 | `face` | `#1b2a4a` | Eyes and smile. |
 
-**The skin and hair colors are neutral placeholders.** No preference was supplied for them, so the current values are stand-ins chosen to sit with the site's palette. They are not a guess about Annika. Set `skin`, `hair`, and `hairStyle` to what Annika wants. The outfit follows the brief's suggestion and can be changed the same way.
+**Skin and hair are Annika's choice.** She asked for tan skin and long black hair. Change `skin`, `hair`, and `hairStyle` only when she asks. The outfit follows the brief's suggestion and can be changed the same way.
 
 Colors are hex strings. An option that does not exist, such as a misspelled hair style, is caught by `npm run typecheck`.
 
-Movement is tuned by the constants at the top of `src/world/Avatar.tsx`: walking speed (`WALK_SPEED`), the shortest and longest walk (`TRIP_MIN_MS`, `TRIP_MAX_MS`), the step (`STEP_LENGTH`, `SWING`, `BOB`), turning (`TURN_MS`, `LOOK_AHEAD_MS`, `SETTLE_DISTANCE`), and the completion cheer (`CHEER_MS`, `HOP`, `ARMS_UP`). To add a new hair or accessory shape, add the option to its type in `avatarConfig.ts` and draw its boxes in the `Hair` or `Accessory` function in `Avatar.tsx`.
+Movement is tuned by the constants at the top of `src/world/Avatar.tsx`: walking speed (`WALK_SPEED`), the shortest and longest walk (`TRIP_MIN_MS`, `TRIP_MAX_MS`), the step (`STEP_LENGTH`, `SWING`, `BOB`), turning (`TURN_MS`, `LOOK_AHEAD_MS`, `SETTLE_DISTANCE`), the completion cheer (`CHEER_MS`, `HOP`, `ARMS_UP`), and the celebration at the end of the trail: the arm that holds the balloons (`HOLD_LIFT`, `HOLD_MS`) and the dance (`DANCE_BEAT_MS`, `DANCE_BOUNCE`, `DANCE_TWIST`, `DANCE_LEAN`, `DANCE_STEP`, `BALLOON_SWAY`). The balloons' colors, places, and sizes are the `BALLOONS` list in the same file. To add a new hair or accessory shape, add the option to its type in `avatarConfig.ts` and draw its boxes in the `Hair` or `Accessory` function in `Avatar.tsx`.
 
 ## Add a public PDF later
 
@@ -203,22 +230,24 @@ Film mode plays the same timeline as the Guided tour (`src/state/timeline.ts`) w
 1. Build and serve the real site with `npm run build` and `npm run preview`, then open `http://localhost:4173/?mode=film`. You can also press Film mode in the top bar, which resets any progress. A slate titled "Film mode" appears and nothing moves.
 2. Size the window to 16:9 or 9:16 (see Frame sizes below), then start your screen recorder.
 3. Press Space, or K, or click Start take. Starting from the keyboard lets the pointer stay out of the picture. If you click, move the pointer off the page afterwards.
-4. The take runs about 55 seconds and then holds on "Next checkpoint: Roblox." until you do something. Stop the recorder when you like.
+4. The take runs about 80 seconds and then holds on the finished trail, with the avatar dancing in the middle of the island and "Next checkpoint: Roblox." beside the sticker, until you do something. Stop the recorder when you like.
 
-The length comes from `TOUR_DURATION_MS` in `src/state/timeline.ts`, which is 55,310 milliseconds. The slate rounds it to "about 55 seconds". The clock waits for the 3D world to finish loading (at most 4 seconds), so a take never starts on an empty stage. There is no audio, so add music or a voice in your editor.
+The length comes from `TOUR_DURATION_MS` in `src/state/timeline.ts`, which is 78,810 milliseconds. The slate rounds it to "about 80 seconds". The clock waits for the 3D world to finish loading (at most 4 seconds), so a take never starts on an empty stage. There is no audio, so add music or a voice in your editor.
 
 | Time | On screen |
 | --- | --- |
-| 0:00 | The unfinished world, the title, and Annika's name. |
-| 0:04 | The avatar walks to the Hub, and the eight companies connect. |
-| 0:08 | Card one, held for 11 seconds. |
-| 0:19 | The Signal Station: three sources switch on, then the feed. |
-| 0:23 | Card two, held for 11 seconds. |
-| 0:34 | The Launch Arch: three checks turn ready, then Launch. |
-| 0:38 | Card three, held for 11 seconds. |
-| 0:49 | "Next checkpoint: Roblox." The sequence is marked finished at 0:55, and this screen stays up. |
+| 0:00 | The unfinished world, the title, Annika's name, and the opening panel: the byline, the headline, and what the site demonstrates. |
+| 0:08 | Checkpoint 1, Discover. The avatar turns to the Pitch Deck, three steps are done, then the pitch. |
+| 0:12 | Card one, held for 12.5 seconds. |
+| 0:24 | Checkpoint 2, Build. The Signal Station: three sources switch on, then the feed. |
+| 0:28 | Card two, held for 12.5 seconds. |
+| 0:41 | Checkpoint 3, Ship. The Launch Arch: three checks turn ready, then Launch. |
+| 0:45 | Card three, held for 12.5 seconds. |
+| 0:57 | Checkpoint 4, Scale. The avatar walks to the Hub, and the eight companies connect. |
+| 1:01 | Card four, held for 12.5 seconds. |
+| 1:13 | The finished trail: four stamps, "Trail complete", and "Next checkpoint: Roblox." beside the "Hired!" sticker. The avatar walks to the middle of the island, cheers, and dances with balloons. The sequence is marked finished at 1:19, and this screen stays up with the dance going. |
 
-Each card is held for 11 seconds, which is enough to read its label, its statement, and its two supporting labels at about 200 words a minute. The longest card has 34 such words.
+Each card is held for 12.5 seconds. During a take a card shows its stamp line, its results, its steps, teams, or takeaway, and its skills, and that is enough time to read them at about 200 words a minute. The longest card has 40 such words. The full "Real experience" statement is left out of the card during a take. It appears in normal play.
 
 ### Keys and controls
 
@@ -236,18 +265,19 @@ For another take, press R and trim the start later, or reload the page to get th
 
 ### What a take shows and hides
 
-A take shows the title, Annika's name and role line, a plain Read resume link, the three destination labels, the panel with objectives, progress, and the Real experience cards, the three mission chips as progress, and the independent-project credit.
+A take shows the title, Annika's name and role line, a plain Read resume link, the four destination labels, the panel with the problem behind each mission, its progress, and the checkpoint cards, the passport row as progress, and the independent-project credit, followed where there is room by the sentence that says what the site demonstrates.
 
 These are hidden or left out.
 
 - The tour controls: the chapter indicator, Pause, Restart, and Play it yourself. They come back while the take is paused, when one of them has keyboard focus, and when you click the world after the take has finished (`src/ui/TourBar.tsx`, `src/styles/hud.css`).
 - The Guided tour and Film mode buttons in the top bar.
-- Help in the panel: the how-to line, the illustration note, the small precision note under each card's statement, Back to map, the Continue button on cards, and the row that reopens cards at the end. Elements marked `film-hide` are switched off by one rule in `src/styles/layout.css`, and the panels leave out their buttons while the timeline is in charge.
+- Help in the panel: the objective, the how-to line, Back to map, the Continue button on cards, each card's full statement with the line under it, and the row that reopens cards at the end. Elements marked `film-hide` are switched off by one rule in `src/styles/layout.css`, and the panels leave out their buttons and their longer text while the timeline is in charge.
+- The passport view. The Passport button and the stamp spaces show progress during a take and cannot be pressed.
 
 ### Frame sizes
 
 - **16:9.** Use a 1920 by 1080 viewport, or 1280 by 720. During a take the type and the panel follow the height of the frame, so both sizes show the same composition, with text large enough for a video that will be watched small.
-- **9:16.** Use a 1080 by 1920 viewport. The panel becomes a sheet under the island. Any tall window narrower than 2:3 gets the same composition scaled to its height (`src/styles/layout.css`), so a 540 by 960 or 450 by 800 window frames the take the same way.
+- **9:16.** Use a 1080 by 1920 viewport. The panel becomes a sheet under the island. Any tall window narrower than 2:3 gets the same composition scaled to its height (`src/styles/layout.css`), so a 540 by 960 or 450 by 800 window frames the take the same way. On the last screen the sheet grows to hold the whole finale, and the island becomes a little smaller to make room.
 
 In Film mode the camera holds the whole island in view for the entire take, at every window size.
 
@@ -268,15 +298,19 @@ Four words carry most of it. An action is a small object that names what happene
 
 ### One click, end to end
 
-Follow the click that connects Company C in mission one.
+Follow the click that connects Company C at the Hub, the mission of the fourth checkpoint.
 
 1. **Input.** There are two ways to make this click, and both send the same action. In the 3D world, `src/world/NetworkZone.tsx` puts an invisible click box (`HitTarget` from `src/world/kit.tsx`) around each company block. In the HTML panel, `src/ui/panels/MissionPanel.tsx` draws a Company C button. Both call `dispatch({ type: 'CONNECT_COMPANY', index: 2 })`.
 2. **State.** `dispatch` belongs to the single `useReducer` in `src/state/GameContext.tsx`. Its reducer, `gameReducer` in `src/state/reducer.ts`, is the only place the game state changes. For this action it checks that the Hub mission is selected, that the index is 0 to 7, and that the company is not already connected. If a check fails it returns the same state object, which is why a repeat click is harmless. Otherwise it returns a new state with `network.connected[2]` set to `true`. When the eighth company connects, it also sets `card` to `'network'` and adds one to `cheers`.
 3. **Questions about state.** `src/state/selectors.ts` answers questions such as "is this mission complete?" (`isMissionComplete`), "how many are connected?" (`connectedCount`), and "which one panel is on screen?" (`panelKind`). The reducer and every view use these same functions, so each question has one answer.
-4. **HTML.** `src/ui/StagePanel.tsx` shows the panel that `panelKind(state)` names. The mission panel marks Company C as connected and updates its count. The mission chips, the destination labels, and a hidden status line for screen readers read the same state. After the eighth connection `panelKind` returns `'card'`, and `src/ui/panels/EvidenceCard.tsx` shows the Real experience text from `content.ts`.
+4. **HTML.** `src/ui/StagePanel.tsx` shows the panel that `panelKind(state)` names. The mission panel marks Company C as connected and updates its count. The passport row, the destination labels, and a hidden status line for screen readers read the same state. After the eighth connection `panelKind` returns `'card'`, and `src/ui/panels/EvidenceCard.tsx` shows the checkpoint card from `content.ts`: the stamp, the results, the skills, and the Real experience statement. The passport row shows the new stamp at the same moment, because it asks the same question (`isMissionComplete`).
 5. **3D world.** `NetworkZone.tsx` passes `state.network.connected[2]` to that company's block. A short tween (`useTween` in `kit.tsx`) eases the change over about a third of a second: the floor connector turns blue and thickens, the block rises, and a blue cap pops out of its roof. When all eight are connected, the hub's beacon lights, the checkpoint flag rises (`src/world/Checkpoints.tsx`), and the avatar does one small cheer because `src/world/Avatar.tsx` watches `state.cheers`.
 
-Choosing a destination works the same way. Clicking a zone (`src/world/ZoneShell.tsx`), a label above a building, a mission chip, or a mission button dispatches `SELECT_MISSION`. The reducer sets `activeMission` and `avatarStop`, and the avatar walks the ring road to that stop.
+Choosing a destination works the same way. Clicking a zone (`src/world/ZoneShell.tsx`), a label above a building, a stamp space in the passport row, or a checkpoint button dispatches `SELECT_MISSION`. The reducer sets `activeMission` and `avatarStop`, and the avatar walks the ring road to that stop. The first checkpoint, the Pitch Deck, is at the corner where the avatar starts, so she only turns to it.
+
+The ending uses one more stop. When the last card is closed, the reducer sets `avatarStop` to `'center'`, the middle of the pond. `src/world/paths.ts` gives the way there: along the road to the middle of one side, then straight in, so the avatar still never cuts across the grass. `Avatar.tsx` sees that the trail is complete and that she belongs in the middle, raises her left arm with the balloons at once, and starts the dance when she has arrived and cheered.
+
+The passport adds no state of its own to the game. Whether the passport view is open is plain interface state in `src/App.tsx`, and every stamp is worked out from the missions that are complete.
 
 ### The tour and Film mode are the same game
 
@@ -287,6 +321,8 @@ Film mode is that same sequence with `mode` set to `'film'`. `src/App.tsx` write
 ### The canvas draws only when something changes
 
 The 3D canvas in `src/world/WorldCanvas.tsx` runs on demand (`frameloop="demand"`). It draws a frame only when something asks for one, and otherwise the page sits idle. A state change asks for a frame. Movement comes from short tweens: `useTween` and `usePulse` in `kit.tsx`, the walk in `Avatar.tsx`, and the one camera move in `CameraRig.tsx`. A tween keeps its in-between values in a plain variable, writes them straight onto the three.js objects (position, scale, color), and asks for the next frame until it finishes. It never puts those values into React state, so React does not re-render on every frame.
+
+The ending is the one exception to "idle". While the avatar dances, the canvas keeps drawing, until the visitor reopens a checkpoint, replays, or leaves. The dance waits while the resume is open, the browser stops it in a hidden tab, and with reduced motion there is no dance: the avatar stands in the middle with the balloons.
 
 The scene is built from one shared box shape and one shared cylinder shape, placed from fixed data, most of it in `src/world/layout.ts`. The pixel ratio is capped at 2, the tour pauses when the tab is hidden, and visitors who ask for reduced motion get instant changes.
 
@@ -305,12 +341,13 @@ The scene is built from one shared box shape and one shared cylinder shape, plac
     state/                 types.ts, reducer.ts, selectors.ts, timeline.ts,
                            useTourRunner.ts, url.ts, GameContext.tsx
     world/                 the 3D island: WorldCanvas.tsx, Scene.tsx, layout.ts (positions
-                           and colors), kit.tsx (blocks, tweens, click targets), the three
+                           and colors), kit.tsx (blocks, tweens, click targets), the four
                            Zone files, Avatar.tsx, avatarConfig.ts, CameraRig.tsx
     ui/                    the HTML interface: TopBar.tsx, StagePanel.tsx, panels/,
-                           MissionChips.tsx, TourBar.tsx, Resume.tsx, ResumeDialog.tsx
+                           Passport.tsx (the passport row and view), Stamp.tsx (the stamp
+                           art), TourBar.tsx, Resume.tsx, ResumeDialog.tsx
     styles/                tokens.css (colors, sizes, the font), base.css, layout.css, hud.css,
-                           panels.css, resume.css, print.css
+                           panels.css, passport.css, resume.css, print.css
     assets/fonts/          the Nunito font file and its license
 ```
 
@@ -322,11 +359,11 @@ To watch the rule at work, run `npm run dev` and open the browser console. `__NE
 
 **Example 1: hold the cards longer in the tour and Film mode.**
 
-1. Open `src/state/timeline.ts` and change `CARD_HOLD_MS` from `11000` to `12000`. All three cards use it, so the sequence grows by 3 seconds to 58.3 seconds.
-2. The Film slate works out its own number and now says "about 60 seconds". The intro's line is plain text, so open `src/content/content.ts` and change `tourNote` to `'Hands-free, about 60 seconds.'`.
+1. Open `src/state/timeline.ts` and change `CARD_HOLD_MS` from `12500` to `13500`. All four cards use it, so the sequence grows by 4 seconds to 82.8 seconds.
+2. The Film slate works out its own number and now says "about 85 seconds". The intro's line is plain text, so open `src/content/content.ts` and change `tourNote` to `'Hands-free, about 85 seconds.'`.
 3. Run `npx vitest run src/state/timeline.test.ts`, then `npm run check`.
 
-The timeline tests are the guard rails. The sequence must last 40 to 60 seconds, each card must stay up long enough to read its statement and labels at 200 words a minute, and the number in `tourNote` must be within 5 seconds of the real length. Try `13000` to watch the first rule fail, or `8000` to watch the second.
+The timeline tests are the guard rails. The sequence must last 65 to 85 seconds, each card must stay up long enough to read what it shows during the sequence at 200 words a minute, and the number in `tourNote` must be within 5 seconds of the real length. Try `14500` to watch the first rule fail (the third fails with it), or `11900` to watch the second.
 
 **Example 2, a little harder: give the Launch zone a different color.**
 
@@ -338,24 +375,61 @@ Colors live in two places, because the 3D world and the HTML are drawn by differ
 
 Here is what else to know.
 
-- The top of the arch, the launch button, the zone outline, and the checkpoint pad and flag all read `MISSION_COLOR.launch`. The chip, the destination label, the panel band, and the card accents read the CSS variable. They follow without further edits.
+- The top of the arch, the launch button, the zone outline, and the checkpoint pad and flag all read `MISSION_COLOR.launch`. The stamp, its space in the passport, the destination label, the panel band, and the card accents read the CSS variable. They follow without further edits.
 - Coral stays wherever it is not the mission color: the avatar's accessory, two flowers, the Customer inquiries bar, the flag in the top bar, and the favicon. That is why the example adds a color instead of editing `coral`.
 - The soft tint sits behind dark text, so keep it light.
 - The names `plazaCoral` and `plazaCoralTop`, and the constant `CORAL` in `src/world/LaunchZone.tsx`, keep their old names. Renaming them is optional, and the type check lists every place to update.
-- No automated test looks at colors. Check this one by eye: select the Launch Arch, finish the mission, and look at the zone, the chip, the label, and the card.
+- No automated test looks at colors. Check this one by eye: select the Launch Arch, finish the mission, and look at the zone, the stamp, the label, and the card.
 
 ## Checks
 
 | Check | Command | What it covers |
 | --- | --- | --- |
 | Types | `npm run typecheck` | Strict TypeScript over the app, its tests, and the build config. It catches a wrong mission id, a missing content field, or an avatar option that does not exist. |
-| Tests | `npm test` | The Vitest files under `src/`. The whole page driven through its real buttons and keys without WebGL (`src/App.test.tsx`): the resume before playing, a full play-through, Replay, a resize in the middle of a mission, the tour and Film mode, mode changes, shortcuts, cleanup of timers and listeners, and the no-WebGL notice. The reducer's game rules: prerequisites, completion, repeated clicks, mode changes, pause, restart, and replay. The selectors that choose the panel. The timeline's order and timing, and its equal result in the tour, in Film mode, and by hand. The tour clock: pause, resume, restart, a hidden tab, and timer cleanup. The URL modes. The content rules listed under "Edit the content". Both resume renderers and the resume sheet. The camera framing at desktop, 16:9, phone, and 9:16 sizes. The avatar's routes. |
+| Tests | `npm test` | The Vitest files under `src/`. The whole page driven through its real buttons and keys without WebGL (`src/App.test.tsx`): the resume before playing, a full play-through, the checkpoint cards, the passport row and the passport view, Replay, a resize in the middle of a mission, the tour and Film mode, mode changes, shortcuts, cleanup of timers and listeners, and the no-WebGL notice. The reducer's game rules: prerequisites, completion, repeated clicks, mode changes, pause, restart, and replay. The selectors that choose the panel. The timeline's order and timing, and its equal result in the tour, in Film mode, and by hand. The tour clock: pause, resume, restart, a hidden tab, and timer cleanup. The URL modes. The content rules listed under "Edit the content". Both resume renderers and the resume sheet. The camera framing at desktop, 16:9, phone, and 9:16 sizes. The avatar's routes. |
 | Build | `npm run build` | The type check again, then the production build into `dist/`, including the no-JavaScript resume and the public-PDF check. |
 | Built files | `npm run verify:dist` | It reads `dist/` as it would be deployed. Every script, stylesheet, and icon that `index.html` references exists. Only expected file types ship. Any PDF or PNG is linked from the site and is not a copy of the source material. No text file contains anything shaped like a phone number, an email address, or a `tel:` or `mailto:` link. The `<noscript>` resume is present with its LinkedIn link. It prints each file's size, raw and gzipped. |
 
 `npm run check` runs all four in that order and stops at the first failure. The tests run in a simulated browser without WebGL, so none of these checks looks at the rendered 3D scene or at a real browser.
 
+### What was checked after the trail update
+
+Three rounds of changes were made after the handoff, all on 19 November 2026. The avatar got tan skin and long black hair. The site became a trail (four checkpoints, the Pitch Deck zone, stamps, the passport, the checkpoint cards, and the trail-complete ending). Then Annika removed the "Illustration only" lines and two lines under the statements, wrote the line under the Build statement, and asked for the "Hired!" sticker and for the avatar to dance with balloons in the middle of the island at the end. These are the checks made after those changes. They are narrower than the handoff checks in the next section.
+
+**Automated checks**
+
+- `npm run check` passed after the last round: no type errors, 684 tests in 11 files, a clean build, and a clean `verify:dist`. It ran in a Linux sandbox with Node 22.23.5 and npm 10.9.9, not on Node 24. On the Mac with Node 24.22.3, `npm run check` last passed at setup, before these changes.
+- Built size: 1,311 kB in total, 388 kB gzipped. The page and its styles are 58 kB (13 kB gzipped), the interface script 285 kB (86 kB), the 3D file 927 kB (249 kB), and the font 39 kB.
+
+**In the browser, on the development server**
+
+The site was looked at in the browser pane of the Claude desktop app, on `npm run dev` running on the Mac. Most states were reached by sending actions through the development handle `__NEXT_CHECKPOINT__`, not by clicking.
+
+- At 1440 by 900: the intro, the map, a mission, all four checkpoint cards, the finale, and the passport view. The Pitch Deck mission was also completed with real mouse clicks on its 3D objects, and the passport view was opened with a click and closed with Escape, which returned focus to the Passport button.
+- At 375 by 812 with phone emulation: the intro, the map, the Pitch Deck mission, the cards for Discover, Ship, and Scale, the finale, the passport view, and the start of the Guided tour (the opening, the first card, and the second mission).
+- A Film take was played through at 450 by 800 (9:16) and at 1280 by 720 (16:9). At 9:16 all four cards and the finale were looked at. At 16:9 the opening, three of the cards, and the finale were looked at. Each of them fit without scrolling. The finale also fit in a 390 by 844 Film window.
+- The console showed no errors during a play-through of two missions and a Replay.
+
+After the last round (the removed lines, the sticker, and the dance), these were looked at again, with every state reached through the development handle:
+
+- At 1440 by 900: the ending, with the sticker on the Roblox space and the avatar in the middle of the pond holding three balloons. Two captures a moment apart showed two different poses, so the dance was moving. A close-up of the avatar and the balloons was looked at.
+- At 375 by 812 with phone emulation: the ending, the passport view with the sticker, a mission panel without its "Illustration only" line, and the Build card with its new line.
+- The last screen of a Film take at 450 by 800 and at 1280 by 720, reached by stepping the timeline by hand. It fit without scrolling in both.
+- The console showed no errors during a full play-through.
+
+**Not checked after the update**
+
+- The production build in a browser. Only the development server was looked at.
+- Real clicks or taps on the 3D objects of the other three zones, and any real tap on a phone-sized window.
+- Keyboard shortcuts, reduced motion, the no-WebGL notice, and printing, in a real browser. The automated tests cover them without WebGL. They do not cover the dance or the balloons, which exist only in the 3D scene: the still pose for reduced motion and the pause behind the resume were read in the code, not seen.
+- The avatar's walk from a checkpoint to the middle of the pond, as motion. Its route is tested, and its end was seen.
+- A Film take at 1920 by 1080 or 1080 by 1920 at full size, the measured timing of a take, and a real screen recording.
+- Draw calls, memory, and loading time.
+- Everything listed under "Not checked" below.
+
 ### What was verified before handoff
+
+These results describe the site as it was first delivered, with three missions, before the two changes above. They were not repeated afterwards, so the numbers in this section (tests, sizes, timings, and measurements) are the earlier ones.
 
 These results are from 19 November 2026, on the code as delivered. Everything ran on one Mac (Apple silicon) with Node 24.5.0, npm 11.5.1, and headless Google Chrome with WebGL, driven by Playwright. "Production build" means `dist/` served by `npm run preview`.
 
@@ -405,10 +479,11 @@ An independent review measured these on the production build. They were not repe
 - **The 3D code is the bulk of the download.** three.js and the world load as a separate file after the page is already readable (the `lazy` import in `src/App.tsx`). That file is roughly three quarters of the shipped bytes, and `npm run verify:dist` prints the current sizes.
 - **Without WebGL**, a short notice replaces the island and everything else works: the missions are playable from the panel buttons, and the tour, Film mode, and the resume behave the same. **Without JavaScript**, the page shows the full resume as plain HTML.
 - **No analytics, no cookies or browser storage, no backend, no environment variables, and no audio.** The built page requests only its own files. The one outside address is the LinkedIn link.
-- **Progress is not saved.** Reloading the page starts again from the mode in the URL.
-- **The camera is fixed.** There is no free roaming. On phone-sized windows the camera eases toward the active zone and back, and never in Film mode. On short phones it also eases the island smaller while a Real experience card or the finale takes more of the screen.
+- **Progress is not saved.** Reloading the page starts again from the mode in the URL, with an empty passport.
+- **No QR code and no printed passport.** The Roblox Trails idea includes a physical, QR-coded passport. This site shows the passport on screen only.
+- **The camera is fixed.** There is no free roaming. On phone-sized windows the camera eases toward the active zone and back, and never in Film mode. On short phones it also eases the island smaller while a checkpoint card or the finale takes more of the screen, and it does the same for the last screen of a tall Film take.
 - **React stays on 19.3.** React Three Fiber 9.8 accepts React 19.0 to 19.3, so `package.json` asks for `~19.3.1`. Raise it together with React Three Fiber.
-- **Small 3D targets on phones.** After the camera moves in, the objects of a mission are still smaller than a comfortable touch target, most of all the three posts of Launch Day. The buttons in the panel do the same things and are full size.
+- **Small 3D targets on phones.** After the camera moves in, the objects of a mission are still smaller than a comfortable touch target, most of all the three posts of Launch Day and the three of the Pitch Deck. The buttons in the panel do the same things and are full size.
 - **Very large text and very high zoom.** The layout is a fixed screen, like a game. It was checked at a 320 pixel wide phone and at 200% browser zoom on a laptop (a 720 by 450 window), where nothing spills off the page and the panel scrolls. At 300% to 400% zoom on a small window, or with the browser's text size set far above normal, parts of the interface overlap.
 - **A phone held sideways** gets the side-panel layout in very little height. Everything is reachable, but the panel has to be scrolled.
 
