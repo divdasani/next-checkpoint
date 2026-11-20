@@ -155,7 +155,6 @@ export function renderStaticResume(content: Content): string {
     sections +
     educationSection +
     '</article>' +
-    `<p class="resume-static__credit">${escapeHtml(content.credit.line)}</p>` +
     '</div>'
   )
 }

@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { App } from './App.tsx'
+import { App, PASSPORT_REVEAL_MS } from './App.tsx'
 import { content } from './content/content.ts'
 import { TOUR_DURATION_MS, TOUR_STEPS } from './state/timeline.ts'
 import { DISCOVERY_IDS, MISSION_IDS, READINESS_IDS, SOURCE_IDS, type MissionId } from './state/types.ts'
@@ -238,15 +238,17 @@ describe('the first screen', () => {
     expect(panel().getByRole('button', { name: label }).matches('button[type="button"]')).toBe(true)
   })
 
-  it('carries the credit that this is an independent project', () => {
-    expect(footer().getByText(content.credit.line)).toBeTruthy()
+  it('shows no "Independent project" line: Annika asked for it to be removed everywhere', () => {
+    // 19 November 2026. It used to stand in the footer, in the passport view, and under the
+    // resume for visitors without JavaScript.
+    expect(document.body.textContent).not.toMatch(/independent project|not affiliated|endorsed by/i)
   })
 
   it('names the trail and its curator, and says what the site demonstrates', () => {
     expect(panel().getByText(trail.byline)).toBeTruthy()
     expect(panel().getByText(trail.themes)).toBeTruthy()
     expect(panel().getByText(trail.demo)).toBeTruthy()
-    // The same sentence follows the credit under the world. (The stylesheet shows one of the two.)
+    // The same sentence is the one line under the world. (The stylesheet shows one of the two.)
     expect(footer().getByText(trail.demo)).toBeTruthy()
   })
 
@@ -398,8 +400,9 @@ describe('playing all four checkpoints with the buttons alone', () => {
     finishEverything()
     const next = within(panel().getByRole('group', { name: 'Next checkpoint: Roblox.' }))
     expect(next.getByRole('heading', { name: 'Next checkpoint: Roblox.' })).toBeTruthy()
-    // The words beside the sticker still say that she is applying.
-    expect(next.getByText(finale.applying)).toBeTruthy()
+    // The words beside the sticker say that she applied, which is as far as it has gone.
+    expect(next.getByText(finale.applied)).toBeTruthy()
+    expect(next.queryByText(finale.applying)).toBeNull()
     // One space. It is not an earned stamp, and there is nothing in it to press.
     const spaces = [...document.querySelectorAll('main .finale__next .stamp')]
     expect(spaces.map((space) => space.getAttribute('data-earned'))).toEqual(['false'])
@@ -521,19 +524,106 @@ describe('the passport view', () => {
 })
 
 describe('the passport view once the trail is complete', () => {
-  it('puts the sticker on the Roblox space, which still says "Not stamped yet" and that she is applying', () => {
+  it('puts the sticker on the Roblox space, and the line beside it now says that she applied', () => {
     installDialogBuiltIns()
     startPlaying()
     finishEverything()
     fireEvent.click(passportButton())
     expect(passportSheet().getByText(overview.progress(4))).toBeTruthy()
+    // Still not an earned stamp, whatever the sticker says.
     const space = document.querySelector('.passport-dialog__next .stamp')
     expect(space?.getAttribute('data-earned')).toBe('false')
     expect(space?.textContent).toBe(trail.sticker)
-    const words = document.querySelector('.passport-dialog__next .note')?.textContent ?? ''
-    expect(words).toContain(`${trail.notStamped}.`)
-    expect(words).toContain(`Sticker: ${trail.sticker}`)
-    expect(words).toContain(finale.applying)
+    // Annika's wording for this state. The sticker is named for visitors who cannot see it.
+    expect(document.querySelector('.passport-dialog__next .note')?.textContent).toBe(
+      `Sticker: ${trail.sticker}. ${finale.applied}`,
+    )
+  })
+})
+
+describe('the passport opening by itself once the trail is complete', () => {
+  const opened = () => document.querySelector('dialog.passport-dialog[open]') !== null
+  /** Five seconds, split so a test can stop just short of them. */
+  const ALMOST = PASSPORT_REVEAL_MS - 100
+
+  beforeEach(() => {
+    installDialogBuiltIns()
+    startPlaying()
+  })
+
+  it('waits five seconds after "Trail complete" appears, then opens', () => {
+    finishEverything()
+    expect(panel().getByRole('heading', { name: trail.complete })).toBeTruthy()
+    advance(ALMOST)
+    expect(opened()).toBe(false)
+    advance(100)
+    expect(opened()).toBe(true)
+    expect(passportSheet().getByText(overview.progress(4))).toBeTruthy()
+    expect(passportSheet().getByText(finale.applied)).toBeTruthy()
+  })
+
+  it('does not open while the trail is unfinished, however long the visitor waits', () => {
+    finish('signal')
+    closeCard()
+    advance(10 * PASSPORT_REVEAL_MS)
+    expect(opened()).toBe(false)
+  })
+
+  it('opens once: after it is closed it stays closed, also when a card is reopened and closed again', () => {
+    finishEverything()
+    advance(PASSPORT_REVEAL_MS)
+    press('Close', passportSheet())
+    advance(10 * PASSPORT_REVEAL_MS)
+    expect(opened()).toBe(false)
+    press(new RegExp(`^${trail.checkpoint} 2:`))
+    closeCard()
+    advance(10 * PASSPORT_REVEAL_MS)
+    expect(opened()).toBe(false)
+  })
+
+  it('a visitor who opens the passport on the ending has seen it, so it does not open again', () => {
+    finishEverything()
+    fireEvent.click(passportButton())
+    press('Close', passportSheet())
+    advance(10 * PASSPORT_REVEAL_MS)
+    expect(opened()).toBe(false)
+  })
+
+  it('never opens over the resume: the five seconds start again when the resume is closed', () => {
+    finishEverything()
+    advance(ALMOST)
+    press(finale.resumeLabel)
+    advance(10 * PASSPORT_REVEAL_MS)
+    expect(opened()).toBe(false)
+    press('Close', resumeSheet())
+    advance(ALMOST)
+    expect(opened()).toBe(false)
+    advance(100)
+    expect(opened()).toBe(true)
+  })
+
+  it('starts the five seconds again when the visitor leaves the ending for a card and comes back', () => {
+    finishEverything()
+    advance(ALMOST)
+    press(new RegExp(`^${trail.checkpoint} 3:`))
+    advance(10 * PASSPORT_REVEAL_MS)
+    expect(opened()).toBe(false)
+    closeCard()
+    advance(ALMOST)
+    expect(opened()).toBe(false)
+    advance(100)
+    expect(opened()).toBe(true)
+  })
+
+  it('opens again for a second finished trail after Replay', () => {
+    finishEverything()
+    advance(PASSPORT_REVEAL_MS)
+    press('Close', passportSheet())
+    press(finale.replayLabel)
+    press(intro.startLabel)
+    finishEverything()
+    advance(PASSPORT_REVEAL_MS)
+    expect(opened()).toBe(true)
   })
 })
 
@@ -565,18 +655,45 @@ describe('the Guided tour', () => {
     expect(passportCount()).toBe(trail.count(4))
   })
 
-  it('its cards keep to what reads at a glance: stamp, results, and skills, with the statement read out instead', () => {
+  it('its cards say the same as the cards in play: results, skills, the statement, and the line under it', () => {
     visit('/?mode=tour')
-    playUntil(trail.stampEarned(discover.checkpoint.stamp))
+    // The second checkpoint, because its statement has a line under it.
+    playUntil(trail.stampEarned(signal.checkpoint.stamp))
     const results = [...document.querySelectorAll('main .metric')].map((metric) => metric.textContent)
-    expect(results).toEqual(discover.checkpoint.metrics.map((metric) => `${metric.value} ${metric.label}`))
+    expect(results).toEqual(signal.checkpoint.metrics.map((metric) => `${metric.value} ${metric.label}`))
     expect(panel().getByText(trail.skillsUnlocked)).toBeTruthy()
-    // The full statement is left off the timed card...
-    expect(document.querySelector('main blockquote')).toBeNull()
-    // ...and reaches screen reader users through the hidden status line.
-    expect(screen.getByRole('status').textContent).toContain(discover.evidence.quote)
-    // The visitor cannot close the card. The sequence does.
+    expect(panel().getByText(cardLabels.realExperience)).toBeTruthy()
+    expect(document.querySelector('main blockquote')?.textContent).toBe(signal.evidence.quote)
+    expect(panel().getByText(signal.evidence.note ?? '')).toBeTruthy()
+    // The statement also reaches screen reader users through the hidden status line,
+    // because the sequence never moves the keyboard focus onto the card.
+    expect(screen.getByRole('status').textContent).toContain(signal.evidence.quote)
+    // The one difference from play: the visitor cannot close the card. The sequence does.
     expect(panel().queryByRole('button')).toBeNull()
+  })
+
+  it('opens the passport by itself when it has finished, and not a moment before', () => {
+    installDialogBuiltIns()
+    visit('/?mode=tour')
+    const opened = () => document.querySelector('dialog.passport-dialog[open]') !== null
+    // The sequence ends more than five seconds after "Trail complete" appears.
+    advance(TOUR_DURATION_MS - 1)
+    expect(panel().getByRole('heading', { name: trail.complete })).toBeTruthy()
+    expect(opened()).toBe(false)
+    advance(1)
+    tick()
+    expect(opened()).toBe(true)
+  })
+
+  it('Escape in that passport closes the passport and leaves the visitor in the finished tour', () => {
+    installDialogBuiltIns()
+    visit('/?mode=tour')
+    advance(TOUR_DURATION_MS)
+    tick()
+    const close = passportSheet().getByRole('button', { name: 'Close' })
+    // The key is pressed inside the dialog. The page's own shortcut must not take it.
+    expect(key('Escape', close)).toBe(true)
+    expect(address()).toBe('/?mode=tour')
   })
 
   describe('while it is connecting the companies', () => {
@@ -653,6 +770,27 @@ describe('Film mode', () => {
     expect([firstTakeStarts, firstTakeEnds, progress()]).toEqual([UNTOUCHED, ALL_DONE, UNTOUCHED])
     advance(FIRST_STEP)
     expect(switches()).toEqual(STEPS.map(() => false))
+  })
+
+  it('a take keeps its cards short: stamp, results, and skills, with the statement read out instead', () => {
+    visit('/?mode=film&autostart=1')
+    playUntil(trail.stampEarned(discover.checkpoint.stamp))
+    const results = [...document.querySelectorAll('main .metric')].map((metric) => metric.textContent)
+    expect(results).toEqual(discover.checkpoint.metrics.map((metric) => `${metric.value} ${metric.label}`))
+    expect(panel().getByText(trail.skillsUnlocked)).toBeTruthy()
+    // A recording has a fixed frame, so the full statement is left off the card...
+    expect(document.querySelector('main blockquote')).toBeNull()
+    // ...and reaches screen reader users through the hidden status line.
+    expect(screen.getByRole('status').textContent).toContain(discover.evidence.quote)
+    expect(panel().queryByRole('button')).toBeNull()
+  })
+
+  it('a finished take stays on the ending: the passport does not open by itself in a recording', () => {
+    installDialogBuiltIns()
+    visit('/?mode=film&autostart=1')
+    advance(TOUR_DURATION_MS + 10 * PASSPORT_REVEAL_MS)
+    expect(panel().getByRole('heading', { name: trail.complete })).toBeTruthy()
+    expect(document.querySelector('dialog.passport-dialog[open]')).toBeNull()
   })
 
   it.each([

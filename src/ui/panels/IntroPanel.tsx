@@ -24,7 +24,7 @@ export function IntroPanel() {
       </header>
 
       <p className="intro__blurb">{intro.blurb}</p>
-      {/* On wide screens this sentence sits after the credit under the world instead. */}
+      {/* Once play has started, wide screens show this sentence under the world instead. */}
       <p className="note trail-demo">{trail.demo}</p>
 
       <div className="intro__actions panel__dock">

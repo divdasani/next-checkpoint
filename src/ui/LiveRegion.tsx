@@ -40,8 +40,8 @@ function describeChange(before: GameState, after: GameState): string | null {
       const { completeLine, checkpoint, evidence } = missionContent(id)
       const earned = `${trail.stampEarned(checkpoint.stamp)}. ${content.overview.progress(completedCount(after))}.`
       // In play mode focus moves to the checkpoint card and the reader reads it there.
-      // The guided sequence never moves focus, and its card leaves the statement out, so
-      // the statement is read out here instead.
+      // The guided sequence never moves focus, and a Film take leaves the statement off its
+      // card, so the statement is read out here instead.
       if (after.mode === 'play') return `${completeLine} ${earned}`
       return `${completeLine} ${earned} ${content.cardLabels.realExperience}: ${evidence.quote}`
     }

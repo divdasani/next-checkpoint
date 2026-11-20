@@ -11,7 +11,7 @@ import { Icon, StatusMark } from './parts.tsx'
 // First the finished trail: all four stamps and the count. Then the next step: one more
 // stamp space, for Roblox. It is where Annika hopes to go next, not something she has, so
 // it is never stamped. It carries the "Hired!" sticker she asked for as a wish, and the
-// words beside it say that she is applying. Below that are the resume, LinkedIn, and a replay.
+// words beside it say that she applied. Below that are the resume, LinkedIn, and a replay.
 export function FinalePanel() {
   const { state, dispatch } = useGame()
   const headingId = useId()
@@ -61,7 +61,7 @@ export function FinalePanel() {
             <span className="visually-hidden">
               {trail.notStamped}. Sticker: {trail.sticker}{' '}
             </span>
-            {trail.nextNote} <span className="finale__applying">{finale.applying}</span>
+            {trail.nextNote} <span className="finale__applying">{finale.applied}</span>
           </p>
         </div>
       </div>
@@ -102,8 +102,8 @@ export function FinalePanel() {
                     title={`${trail.checkpoint} ${mission.number}: ${mission.checkpoint.name}`}
                     onClick={() => dispatch({ type: 'OPEN_CARD', mission: id })}
                   >
-                    <span className="visually-hidden">{trail.checkpoint} </span>
-                    {mission.number}
+                    {/* The space sits outside the hidden word, so the name reads "Checkpoint 2: Build". */}
+                    <span className="visually-hidden">{trail.checkpoint}</span> {mission.number}
                     <span className="visually-hidden">: {mission.checkpoint.name}</span>
                   </button>
                 </li>

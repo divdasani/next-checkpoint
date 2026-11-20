@@ -90,8 +90,9 @@ describe('renderStaticResume', () => {
     for (const line of [school, degree, location, date]) expect(education).toContain(line)
   })
 
-  it('carries the independent-project credit', () => {
-    expect(doc.querySelector('.resume-static__credit')?.textContent).toBe(content.credit.line)
+  it('carries no "Independent project" line (Annika removed it from the site on 19 November 2026)', () => {
+    expect(doc.querySelector('.resume-static__credit')).toBeNull()
+    expect(doc.body.textContent).not.toMatch(/independent project|not affiliated|endorsed by/i)
   })
 
   it('escapes special characters in every piece of text', () => {
@@ -102,7 +103,6 @@ describe('renderStaticResume', () => {
     const copy = {
       ...content,
       intro: { ...content.intro, title: hostile },
-      credit: { line: hostile },
       identity: { ...content.identity, linkedInUrl: hostileUrl, linkedInLabel: hostile },
       resume: {
         ...resume,

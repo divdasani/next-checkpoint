@@ -202,7 +202,7 @@
   }
 }
 
-/* ── Footer: tour controls, passport strip, progress line, credit ─────────── */
+/* ── Footer: tour controls, passport strip, progress line, what the site is for ── */
 
 .hud__foot {
   container: foot / inline-size;
@@ -374,7 +374,7 @@
 }
 
 /* The progress sentence. Hidden from view (not from screen readers) while the footer is
-   too narrow to give it a place beside the credit. The chips show the same progress. */
+   too narrow to give it a place of its own. The chips show the same progress. */
 .chips__progress {
   position: absolute;
   width: 1px;
@@ -392,51 +392,28 @@
     0 0 0.5rem var(--paper);
 }
 
-/* The independent-project credit: small and quiet, but always on screen. */
-.credit {
-  color: var(--ink-soft);
-  /* Never below 12px, even where Film mode scales the type down. */
-  font-size: max(0.75rem, 12px);
-  line-height: 1.35;
-  text-wrap: balance;
-
-  /* Phones: a row of its own would cost the world a sixth of its height. Instead the
-     credit is tucked into the lower left corner of the stage, just above the footer,
-     where the diamond-shaped island leaves the sky empty. The zoomed-in island can pass
-     behind it there, so it sits on a pale backing that keeps the words readable. */
-  position: absolute;
-  bottom: calc(100% + 0.25rem);
-  left: 0;
-  max-width: max(10rem, 160px);
-  padding: 0.1875rem 0.4375rem;
-  border-radius: var(--radius-s);
-  background: color-mix(in srgb, var(--paper) 78%, transparent);
-}
-
-/* What the site is for. It follows the credit wherever the credit has a line of its own. */
-.credit__demo {
+/* What the site is for: one small line under the chips. A row of its own would cost the
+   world a sixth of its height on a phone, so it is only shown where the footer is wide
+   enough. Phones still get the sentence on the opening panel and in the passport view. */
+.foot-demo {
   display: none;
   color: var(--ink);
+  /* Never below 12px, even where Film mode scales the type down. */
+  font-size: max(0.75rem, 12px);
   font-weight: 700;
+  line-height: 1.35;
+  text-wrap: balance;
 }
 
 @container foot (min-width: 30em) {
-  /* Enough room for the credit to have its own line under the chips, on open sky. */
-  .credit {
-    position: static;
+  /* Enough room for a line of its own under the chips, on open sky. */
+  .foot-demo {
+    display: block;
     flex: 1 1 100%;
-    max-width: none;
-    padding: 0;
-    background: none;
     text-shadow:
       0 0 0.125rem var(--paper),
       0 0 0.25rem var(--paper),
       0 0 0.5rem var(--paper);
-  }
-
-  /* On its own line the credit also has room to say what the site is for. */
-  .credit__demo {
-    display: inline;
   }
 }
 
@@ -503,7 +480,7 @@
     clip-path: none;
   }
 
-  .credit {
+  .foot-demo {
     flex: 0 1 auto;
     margin-left: auto;
     text-align: right;
@@ -512,8 +489,8 @@
 
 /* The opening panel and the first screen of the guided sequence say the same sentence
    themselves, so it is not shown twice. */
-.app-shell[data-phase='intro'] .credit__demo,
-.app-shell:not([data-mode='play'])[data-panel='overview'] .credit__demo {
+.app-shell[data-phase='intro'] .foot-demo,
+.app-shell:not([data-mode='play'])[data-panel='overview'] .foot-demo {
   display: none;
 }
 
@@ -680,16 +657,9 @@
    focus, or when the finished take is tapped. */
 .app-shell[data-mode='film'] .tourbar {
   position: absolute;
-  /* On a phone this clears the credit, which sits in the same corner. */
-  bottom: calc(100% + 3.75rem);
+  bottom: calc(100% + var(--gap));
   left: 0;
   transition: opacity 160ms ease-out;
-}
-
-@container foot (min-width: 30em) {
-  .app-shell[data-mode='film'] .tourbar {
-    bottom: calc(100% + var(--gap));
-  }
 }
 
 .app-shell[data-mode='film']:not([data-tour='paused']) .tourbar:not(:focus-within):not([data-revealed]) {
@@ -984,11 +954,3 @@
   }
 }
 
-/* Without a world there is no empty sky corner for the credit, so on phones it goes
-   back to a line of its own under the chips. */
-.app-shell[data-world='unavailable'] .credit {
-  position: static;
-  max-width: none;
-  padding: 0;
-  background: none;
-}

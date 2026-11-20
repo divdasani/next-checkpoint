@@ -106,10 +106,16 @@ describe('timing of the guided sequence', () => {
     expect(firstChange?.at).toBeGreaterThanOrEqual(3_000)
   })
 
-  it('holds the opening long enough to read the byline, the headline, and what the site demonstrates', () => {
-    // What the first panel of the sequence shows (ui/panels/OverviewPanel.tsx, while busy).
-    const shown = [content.trail.byline, content.intro.opening, content.trail.demo]
+  it('holds the opening long enough to read the byline and the headline', () => {
+    // The first panel of the sequence (ui/panels/OverviewPanel.tsx, while busy) also shows
+    // what the site demonstrates. That third line is deliberately not counted: on
+    // 19 November 2026 Annika asked for a quicker start, because the opening looked as if
+    // nothing was happening. The same sentence stays in view under the world on wide
+    // screens, and it is in the passport view.
+    const shown = [content.trail.byline, content.intro.opening]
     expect(TOUR_STEPS[0].at).toBeGreaterThanOrEqual(readingTime(shown))
+    // And it is quicker than the 8 seconds she found too long.
+    expect(TOUR_STEPS[0].at).toBeLessThanOrEqual(5_000)
   })
 
   it.each(MISSION_IDS)('keeps the %s card on screen long enough to read it at 200 words a minute', (mission) => {
@@ -117,10 +123,14 @@ describe('timing of the guided sequence', () => {
     const opened = firstFrame(frames, (state) => state.card === mission, `${mission} card opens`)
     const closed = frames.find((frame) => frame.index > opened.index && frame.after.card !== mission)
     expect(closed, `the ${mission} card is closed again`).toBeDefined()
-    // What a card shows while the sequence plays (ui/panels/EvidenceCard.tsx, while busy):
-    // "Checkpoint complete" and the checkpoint's name, the stamp line, the passport count,
-    // the results, the teams, steps, or takeaway, and the skills. The full statement is
-    // left out of the timed card, so it is not counted here.
+    // What a card shows in a Film take (ui/panels/EvidenceCard.tsx): "Checkpoint complete"
+    // and the checkpoint's name, the stamp line, the passport count, the results, the teams,
+    // steps, or takeaway, and the skills. That part has to be readable in the time.
+    //
+    // The Guided tour shows the full card, with the statement under these parts, for the
+    // same length of time. The statement is deliberately not counted: on 19 November 2026
+    // Annika chose to keep the tour's pace over holding each card for twice as long, and a
+    // visitor who wants to read every word can pause.
     const { checkpoint } = content.missions[mission]
     const { trail } = content
     const shown = [
@@ -155,7 +165,7 @@ describe('timing of the guided sequence', () => {
   })
 
   it('matches the length the intro promises, when the intro states one', () => {
-    // content.intro.tourNote tells visitors roughly how long the tour takes ("about 80 seconds").
+    // content.intro.tourNote tells visitors roughly how long the tour takes ("about 75 seconds").
     // If that wording keeps a number, the number has to be true. Without a number there is no claim to check.
     const stated = /(\d+)\s*seconds/.exec(content.intro.tourNote)
     if (stated) expect(Math.abs(Number(stated[1]) - TOUR_DURATION_MS / 1000)).toBeLessThanOrEqual(5)

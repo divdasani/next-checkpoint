@@ -74,8 +74,8 @@
     outline: none !important;
   }
 
-  /* The copy shown without JavaScript prints the same way: drop the card, the notice,
-     and the credit. "!important" is needed to override the styles written on the element. */
+  /* The copy shown without JavaScript prints the same way: drop the card and the notice.
+     "!important" is needed to override the styles written on the element. */
   .resume-static {
     width: auto !important;
     max-width: none !important;
@@ -86,8 +86,7 @@
   }
 
   .resume-static__notice,
-  .resume-static__download,
-  .resume-static__credit {
+  .resume-static__download {
     display: none !important;
   }
 

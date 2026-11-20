@@ -1,7 +1,19 @@
-import { Component, lazy, Suspense, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import {
+  Component,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { content } from './content/content.ts'
 import { GameProvider, useGame } from './state/GameContext.tsx'
-import { panelKind } from './state/selectors.ts'
+import { isTourBusy, panelKind } from './state/selectors.ts'
+import type { GameState } from './state/types.ts'
 import { DestinationPins } from './ui/DestinationPins.tsx'
 import { FilmTapLayer } from './ui/FilmTapLayer.tsx'
 import { LiveRegion } from './ui/LiveRegion.tsx'
@@ -65,12 +77,52 @@ function pinLayerBounds(stage: ScreenRect | null): CSSProperties | undefined {
   } as CSSProperties
 }
 
+/** How long the finished trail is on screen before the passport opens by itself. */
+export const PASSPORT_REVEAL_MS = 5000
+
+/**
+ * Once the trail is complete, the passport opens by itself, five seconds after the "Trail
+ * complete" panel appears, so that nobody misses it.
+ *
+ * It does this once for each finished trail (a Replay starts over). It never opens over
+ * the resume, and never in Film mode, which is a recording. In the Guided tour it waits the
+ * last half second for the sequence to finish. If the visitor leaves the ending before the
+ * five seconds are up, they start again when the ending is back. A visitor who opens the
+ * passport on the ending themselves has seen it, so it does not open a second time.
+ */
+function usePassportReveal(state: GameState, passportOpen: boolean, open: () => void): void {
+  const { phase, card, mode, resumeOpen, epoch } = state
+  const busy = isTourBusy(state)
+  const revealedFor = useRef<number | null>(null)
+  const since = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (passportOpen && phase === 'finale') revealedFor.current = epoch
+  }, [passportOpen, phase, epoch])
+
+  const waiting = phase === 'finale' && card === null && mode !== 'film' && !resumeOpen && !passportOpen
+  useEffect(() => {
+    if (!waiting || revealedFor.current === epoch) {
+      since.current = null
+      return
+    }
+    since.current ??= Date.now()
+    if (busy) return
+    const wait = Math.max(0, since.current + PASSPORT_REVEAL_MS - Date.now())
+    const timer = window.setTimeout(() => {
+      revealedFor.current = epoch
+      open()
+    }, wait)
+    return () => window.clearTimeout(timer)
+  }, [waiting, busy, epoch, open])
+}
+
 /**
  * Three layers stacked on top of each other, back to front:
  *   world-layer  the 3D canvas, filling the screen
  *   pin-layer    HTML labels that the canvas positions above the buildings
  *   hud          the interface: top bar, the free "stage" area, the panel, and the footer
- *                (tour controls, the passport strip, and the credit)
+ *                (tour controls, the passport strip, and the line that says what the site is for)
  *
  * The data attributes on .app-shell expose the current state to the stylesheets
  * (for example, Film mode hides optional help with one CSS rule).
@@ -99,6 +151,8 @@ function Shell() {
   // The passport view only looks at the game, it never changes it, so whether it is open
   // is plain interface state and lives here instead of in the reducer.
   const [passportOpen, setPassportOpen] = useState(false)
+  const openPassport = useCallback(() => setPassportOpen(true), [])
+  usePassportReveal(state, passportOpen, openPassport)
 
   return (
     <>
@@ -148,13 +202,10 @@ function Shell() {
 
           <footer className="hud__foot">
             <TourBar revealed={controlsShown} />
-            <PassportStrip open={passportOpen} onOpen={() => setPassportOpen(true)} />
-            {/* The independence credit, then what the site is for. The second sentence is
-                shown wherever the credit has a line of its own (see hud.css). */}
-            <p className="credit">
-              <span className="credit__line">{content.credit.line}</span>{' '}
-              <span className="credit__demo">{content.trail.demo}</span>
-            </p>
+            <PassportStrip open={passportOpen} onOpen={openPassport} />
+            {/* What the site is for, shown where the footer has a line to spare (see hud.css).
+                The opening panel and the passport view say it as well. */}
+            <p className="foot-demo">{content.trail.demo}</p>
           </footer>
         </div>
       </div>

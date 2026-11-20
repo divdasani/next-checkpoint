@@ -14,9 +14,11 @@ import { Dot, Icon } from './parts.tsx'
 //   skills              the skills this work demonstrates, unlocked with the stamp
 //   Real experience     the full statement in her words, with its precision note
 //
-// The words come from the content file unchanged. While the guided sequence plays, the
-// card is on screen for a fixed time, so it keeps to the parts that read at a glance:
-// the stamp, the results, how, and the skills. The full statement is for readers.
+// The words come from the content file unchanged. The Guided tour shows the same card as
+// play, statement included: Annika asked for the two to be the same, and to keep the tour's
+// pace, so a visitor who wants to read every word can pause. Only a Film take is shorter.
+// It is a recording with a fixed frame, so its card keeps to the parts that read at a
+// glance: the stamp, the results, how, and the skills.
 export function EvidenceCard() {
   const { state, dispatch } = useGame()
   const headingId = useId()
@@ -28,6 +30,8 @@ export function EvidenceCard() {
   const { trail } = content
   // During the guided tour and Film mode the timeline closes the card after a fixed hold.
   const busy = isTourBusy(state)
+  // A Film take leaves the statement out (see above).
+  const short = busy && state.mode === 'film'
   // Closing the last card opens the finale, so the button says what comes next.
   const leadsToFinale = allComplete(state) && state.phase !== 'finale'
 
@@ -96,8 +100,8 @@ export function EvidenceCard() {
         </ul>
       </div>
 
-      {/* The statement behind the numbers. Left out while the sequence plays (see above). */}
-      {!busy && (
+      {/* The statement behind the numbers. Left out of a Film take (see above). */}
+      {!short && (
         <div className="evidence__fact">
           <p className="evidence__fact-label">
             <span className="evidence__fact-mark" aria-hidden="true">

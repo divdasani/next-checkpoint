@@ -347,9 +347,12 @@ describe('title, opening actions, and ending', () => {
     expect(content.finale.replayLabel).toBe('Replay')
   })
 
-  it('carries a credit that says the site is independent and not affiliated with Roblox', () => {
-    expect(content.credit.line).toMatch(/independent/i)
-    expect(content.credit.line).toMatch(/not affiliated/i)
+  it('carries no "Independent project" line: Annika asked for it to be removed everywhere on the site', () => {
+    // 19 November 2026. The brief had "Independent project. Not affiliated with or endorsed
+    // by Roblox." in the footer. What still says where she stands: the role line
+    // ("applicant") and the lines about applying, which are checked under "honest wording".
+    expect(Object.keys(content)).not.toContain('credit')
+    expect(ALL_TEXT.filter((text) => /independent project|not affiliated|endorsed by/i.test(text))).toEqual([])
   })
 })
 
@@ -667,18 +670,21 @@ describe('honest wording', () => {
   })
 
   describe('no sentence states an offer or a job at Roblox', () => {
-    it('she is described as an applicant, and the finale says she is applying', () => {
+    it('she is described as an applicant, and the ending says she applied', () => {
       expect(content.identity.role).toBe('Associate Product Manager applicant')
-      expect(content.finale.applying).toMatch(/\bapplying\b/i)
+      // The ending and the finished passport say "Applied". The unfinished passport says "Applying".
+      expect(content.finale.applied).toMatch(/^applied\b/i)
+      expect(content.finale.applying).toMatch(/^applying\b/i)
     })
 
     it('every sentence that names Roblox makes the relationship clear', () => {
-      // Allowed: the ending line from the brief, wording about applying, the independence
-      // credit, and "Roblox-inspired". A new sentence about Roblox needs one of these too,
-      // or a deliberate change to this list.
+      // Allowed: the ending line from the brief, wording about applying, a statement of
+      // independence, and "Roblox-inspired". A new sentence about Roblox needs one of these
+      // too, or a deliberate change to this list. (The site no longer carries a statement
+      // of independence: Annika removed it. The pattern stays so one could return.)
       const clear = [
         /^Next checkpoint: Roblox\.$/,
-        /\bapply(?:ing)?\b|\bapplicant\b|\bapplication\b/i,
+        /\bapply(?:ing)?\b|\bapplied\b|\bapplicant\b|\bapplication\b/i,
         /\bnot affiliated\b|\bnot endorsed\b|\bindependent\b|\bunofficial\b/i,
         /\bRoblox-inspired\b/i,
       ]
@@ -708,7 +714,7 @@ describe('honest wording', () => {
     it('the one "Hired!" is the sticker Annika asked for, and the words around it still say she is applying', () => {
       // 19 November 2026: Annika asked for a "Hired!" sticker on the Roblox space at the end
       // of the trail. Asked first, she said she has not been hired and wants it as a wish,
-      // with the "applying" line kept beside it. So the sticker is allowed, and only the
+      // with a line about applying kept beside it. So the sticker is allowed, and only the
       // sticker: no sentence may say she was hired, the space under it stays "Not stamped
       // yet", and the role line and the finale keep saying that she is an applicant.
       expect(content.trail.sticker).toBe('Hired!')
@@ -718,6 +724,8 @@ describe('honest wording', () => {
       ).toEqual([])
       expect(content.trail.notStamped).toBe('Not stamped yet')
       expect(content.finale.applying).toBe("Applying for Roblox's Associate Product Manager role.")
+      // Beside the sticker the line reads "Applied", on the ending and in the passport (her wording, same day).
+      expect(content.finale.applied).toBe("Applied for Roblox's Associate Product Manager role.")
       expect(content.identity.role).toBe('Associate Product Manager applicant')
     })
 

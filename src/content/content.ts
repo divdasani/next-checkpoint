@@ -104,7 +104,7 @@ const intro = {
     'A small playable resume. Follow four checkpoints, collect a passport stamp at each, and see the real work behind it.',
   startLabel: 'Start playing',
   tourLabel: 'Guided tour',
-  tourNote: 'Hands-free, about 80 seconds.',
+  tourNote: 'Hands-free, about 75 seconds.',
   resumeLabel: 'Read resume',
 } as const
 
@@ -126,7 +126,7 @@ const trail = {
     { term: 'Stops', detail: '4' },
     { term: 'Theme', detail: 'Career journey' },
   ],
-  /** What the site is for. It sits right after the independence credit. */
+  /** What the site is for: on the opening panel, under the world where there is room, and in the passport. */
   demo: 'Built to demonstrate Roblox Trails, the product idea from my APM application.',
   passport: 'Passport',
   /** The short count on the passport button. */
@@ -313,6 +313,8 @@ const finale = {
   motivation:
     "I've built systems that help businesses work together. Now I want to help build experiences that bring people together.",
   applying: "Applying for Roblox's Associate Product Manager role.",
+  /** The line beside the sticker, on the ending and in the passport once the trail is complete. Annika's wording. */
+  applied: "Applied for Roblox's Associate Product Manager role.",
   resumeLabel: 'Read resume',
   linkedInLabel: 'LinkedIn',
   replayLabel: 'Replay',
@@ -404,10 +406,6 @@ const resume = {
   publicPdf: null as PublicPdf | null,
 }
 
-const credit = {
-  line: 'Independent project. Not affiliated with or endorsed by Roblox.',
-} as const
-
 const cardLabels = {
   realExperience: 'Real experience',
   continue: 'Continue',
@@ -423,7 +421,6 @@ export const content = {
   cardLabels,
   finale,
   resume,
-  credit,
 }
 
 export type Content = typeof content

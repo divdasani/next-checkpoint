@@ -6,7 +6,7 @@ A visitor sees one blocky island, travels to four checkpoints (Discover, Build, 
 
 It is a static site built with React, TypeScript, Vite, three.js, and React Three Fiber. It has no backend.
 
-Independent project. Not affiliated with or endorsed by Roblox.
+Independent project. Not affiliated with or endorsed by Roblox. (The site itself no longer shows this notice. Annika asked for it to be removed from the site on 19 November 2026. It is still true, and it stays in this file.)
 
 This repository is the whole application. The briefs, the reference images, and the original resume it was built from are working material. They are kept outside the repository and are not published.
 
@@ -56,7 +56,6 @@ Every career fact and almost all visible wording live in one file, `src/content/
 | `cardLabels` | "Real experience" and the two Continue button labels. |
 | `finale` | "Next checkpoint: Roblox.", the motivation, the "applying" line, and the button labels. |
 | `resume` | The readable resume: summary, skills, sections with entries and bullets, education, and `publicPdf`. |
-| `credit` | The independent-project line in the footer. |
 
 Each mission has two parts for its card.
 
@@ -74,7 +73,7 @@ The quotes for Build, Ship, and Scale come from the project brief. The Discover 
 
 The numbers are the order of the trail, which the Guided tour and Film mode follow. A visitor may play the checkpoints in any order.
 
-In normal play a card shows everything. While the Guided tour or Film mode plays, a card shows the stamp, the results, and the skills, and leaves out the full statement and its note, so that it can be read in the time it is on screen.
+In normal play and in the Guided tour a card shows everything. The tour's card is on screen for 12.5 seconds, which is not long enough to read all of it. Annika chose this on 19 November 2026: the two cards are the same, the tour keeps its pace, and a visitor who wants to read every word presses Pause. A Film take is a recording with a fixed frame, so its card shows the stamp, the results, and the skills, and leaves out the full statement and the line under it.
 
 ### The passport
 
@@ -82,7 +81,8 @@ The passport is the trail's progress, and it is always on screen. The row under 
 
 Three things about it are deliberate.
 
-- **The Roblox space is never stamped.** It marks where Annika hopes to go next. Nothing on the site can turn it into a stamp, and no sentence may say that it was earned. Once the trail is complete it carries a "Hired!" sticker, on the ending and in the passport view. Annika asked for the sticker on 19 November 2026. Asked first whether she had been hired, she said no: it is a wish, and the line "Applying for Roblox's Associate Product Manager role." stays beside it. The passport still says "Not stamped yet" under it. The sticker's word is `trail.sticker` in `content.ts`.
+- **The Roblox space is never stamped.** It marks where Annika hopes to go next. Nothing on the site can turn it into a stamp, and no sentence may say that it was earned. Once the trail is complete it carries a "Hired!" sticker, on the ending and in the passport view. Annika asked for the sticker on 19 November 2026. Asked first whether she had been hired, she said no: it is a wish, and a line about her application stays beside it. That line reads "Applied for Roblox's Associate Product Manager role." (`finale.applied`, her wording), on the ending and in the passport view. Until the trail is complete, the passport's space has no sticker and reads "Not stamped yet. Applying for Roblox's Associate Product Manager role." The sticker's word is `trail.sticker` in `content.ts`.
+- **It opens by itself once.** Five seconds after the "Trail complete" panel appears, the passport view opens without being asked, so that nobody misses it (`usePassportReveal` in `src/App.tsx`, and `PASSPORT_REVEAL_MS` for the delay). It does this once for each finished trail. It does not open over the resume, and not in Film mode. In the Guided tour it opens when the sequence has finished, half a second later. If the visitor leaves the ending first, the five seconds start again when they return, and a visitor who opened the passport on the ending themselves is not shown it again.
 - **There are no popularity figures.** The trail shows no followers, likes, ratings, or reviews, because there are none.
 - **Nothing is saved.** The stamps live in the page's state. Reloading the page starts with an empty passport. The site still uses no cookies and no browser storage.
 
@@ -96,6 +96,7 @@ Two things live elsewhere. The browser tab title and the link-preview descriptio
 
 - **Exact card wording.** Each `evidence.quote` must match the confirmed wording character for character. The line under each statement is fixed as well: Build and Ship have one, and Discover and Scale have none. The mission titles, the checkpoint names, the words on the stamps, where each piece of work happened, the skills on each card, the headline results, the three pitch-deck steps, the three data-source names, the three readiness names, "Real experience", the opening button labels, and "Next checkpoint: Roblox." are fixed the same way.
 - **The trail and its passport.** The byline, the themes line, and the sentence that says what the site demonstrates are fixed. The passport counts from 0 of 4 to 4 of 4. Followers, ratings, likes, and reviews fail.
+- **No "Independent project" line.** The brief had "Independent project. Not affiliated with or endorsed by Roblox." in the footer, in the passport view, and under the resume for visitors without JavaScript. Annika asked for it to be removed everywhere on the site on 19 November 2026, and the tests fail if it comes back. What the site still says about where she stands is the role line ("applicant") and the lines about applying.
 - **Lines Annika removed stay out.** On 19 November 2026 she asked for the four "Illustration only" lines under the missions to be removed, and the lines under the Discover and Scale statements ("It was not built or released." and "Neither figure is revenue I generated."). She wrote the line under the Build statement herself. The test fails if an illustration line comes back or one of these lines changes. The statements still carry the precision in their own words: "app concept", "billing", and "absorbed" are checked there.
 - **Confirmed numbers only.** Every number in the cards, the finale, and the resume must be on the test's list of confirmed figures. The only dollar amounts allowed anywhere are $700M and $360M. A sentence with $700M must say "billing". A sentence with $360M must say "absorbed" or "accommodated". The word "generated" may appear only in a sentence that negates it.
 - **The gaming project is a concept.** Any sentence that contains "app" or "gaming" must also contain "concept". Wording such as "built an app", "shipped", "app users", or "downloads" fails. One line is exempt: the themes under the byline ("Product · Operations · Gaming · Technology"), which Annika asked for. It lists interests, claims nothing, and is pinned word for word.
@@ -106,7 +107,7 @@ Two things live elsewhere. The browser tab title and the link-preview descriptio
 
 When a check fails after an edit, look at the edit first. Change the test only when the fact itself has changed and Annika has confirmed the new one. Then update the matching expectation in the same change, for example by adding the new figure to the `amounts` list, so the test keeps describing the truth. Do not delete a check to get a passing run.
 
-Two smaller ties are worth knowing. `intro.tourNote` says "about 80 seconds", and `src/state/timeline.test.ts` fails if that number is more than 5 seconds from the real length. If you add a new text-building function to `content.ts` (like `progress` or `blocked`), the content test "this test reads every text-building function in the content file" fails until you add the function to its list and the function's output to `builtText`, so the wording rules read the new text too.
+Two smaller ties are worth knowing. `intro.tourNote` says "about 75 seconds", and `src/state/timeline.test.ts` fails if that number is more than 5 seconds from the real length. If you add a new text-building function to `content.ts` (like `progress` or `blocked`), the content test "this test reads every text-building function in the content file" fails until you add the function to its list and the function's output to `builtText`, so the wording rules read the new text too.
 
 ### The resume has two renderers
 
@@ -230,22 +231,24 @@ Film mode plays the same timeline as the Guided tour (`src/state/timeline.ts`) w
 1. Build and serve the real site with `npm run build` and `npm run preview`, then open `http://localhost:4173/?mode=film`. You can also press Film mode in the top bar, which resets any progress. A slate titled "Film mode" appears and nothing moves.
 2. Size the window to 16:9 or 9:16 (see Frame sizes below), then start your screen recorder.
 3. Press Space, or K, or click Start take. Starting from the keyboard lets the pointer stay out of the picture. If you click, move the pointer off the page afterwards.
-4. The take runs about 80 seconds and then holds on the finished trail, with the avatar dancing in the middle of the island and "Next checkpoint: Roblox." beside the sticker, until you do something. Stop the recorder when you like.
+4. The take runs about 75 seconds and then holds on the finished trail, with the avatar dancing in the middle of the island and "Next checkpoint: Roblox." beside the sticker, until you do something. Stop the recorder when you like.
 
-The length comes from `TOUR_DURATION_MS` in `src/state/timeline.ts`, which is 78,810 milliseconds. The slate rounds it to "about 80 seconds". The clock waits for the 3D world to finish loading (at most 4 seconds), so a take never starts on an empty stage. There is no audio, so add music or a voice in your editor.
+The length comes from `TOUR_DURATION_MS` in `src/state/timeline.ts`, which is 75,310 milliseconds. The slate rounds it to "about 75 seconds". The clock waits for the 3D world to finish loading (at most 4 seconds), so a take never starts on an empty stage. There is no audio, so add music or a voice in your editor.
 
 | Time | On screen |
 | --- | --- |
-| 0:00 | The unfinished world, the title, Annika's name, and the opening panel: the byline, the headline, and what the site demonstrates. |
-| 0:08 | Checkpoint 1, Discover. The avatar turns to the Pitch Deck, three steps are done, then the pitch. |
-| 0:12 | Card one, held for 12.5 seconds. |
-| 0:24 | Checkpoint 2, Build. The Signal Station: three sources switch on, then the feed. |
-| 0:28 | Card two, held for 12.5 seconds. |
-| 0:41 | Checkpoint 3, Ship. The Launch Arch: three checks turn ready, then Launch. |
-| 0:45 | Card three, held for 12.5 seconds. |
-| 0:57 | Checkpoint 4, Scale. The avatar walks to the Hub, and the eight companies connect. |
-| 1:01 | Card four, held for 12.5 seconds. |
-| 1:13 | The finished trail: four stamps, "Trail complete", and "Next checkpoint: Roblox." beside the "Hired!" sticker. The avatar walks to the middle of the island, cheers, and dances with balloons. The sequence is marked finished at 1:19, and this screen stays up with the dance going. |
+| 0:00 | The unfinished world, the title, Annika's name, and the opening panel: the byline, the headline, and what the site demonstrates. It is held for 4.5 seconds. |
+| 0:05 | Checkpoint 1, Discover. The avatar turns to the Pitch Deck, three steps are done, then the pitch. |
+| 0:08 | Card one, held for 12.5 seconds. |
+| 0:21 | Checkpoint 2, Build. The Signal Station: three sources switch on, then the feed. |
+| 0:25 | Card two, held for 12.5 seconds. |
+| 0:37 | Checkpoint 3, Ship. The Launch Arch: three checks turn ready, then Launch. |
+| 0:41 | Card three, held for 12.5 seconds. |
+| 0:54 | Checkpoint 4, Scale. The avatar walks to the Hub, and the eight companies connect. |
+| 0:57 | Card four, held for 12.5 seconds. |
+| 1:10 | The finished trail: four stamps, "Trail complete", and "Next checkpoint: Roblox." beside the "Hired!" sticker. The avatar walks to the middle of the island, cheers, and dances with balloons. The sequence is marked finished at 1:15, and this screen stays up with the dance going. |
+
+The opening is held for 4.5 seconds, long enough to read the byline and the headline. It was 8 seconds, long enough for all three lines, until Annika asked for a quicker start on 19 November 2026: the first screen looked as if nothing was happening. The Guided tour and Film mode share one timeline, so both start quicker.
 
 Each card is held for 12.5 seconds. During a take a card shows its stamp line, its results, its steps, teams, or takeaway, and its skills, and that is enough time to read them at about 200 words a minute. The longest card has 40 such words. The full "Real experience" statement is left out of the card during a take. It appears in normal play.
 
@@ -259,20 +262,20 @@ The shortcuts are defined in `src/ui/useShortcuts.ts`.
 | R | Restarts from the top at once. It does not return to the slate. |
 | Esc | Leaves Film mode for normal play and keeps the progress made so far. |
 
-In the Guided tour, Space and Esc work the same way. The letter keys K and R work there only while the tour controls have keyboard focus, so a stray letter cannot restart a visitor's tour. Keys pressed with Ctrl, Cmd, Alt, or Shift are ignored, and so are all shortcuts while the resume is open. Clicking or tapping the world during a take also pauses and resumes it (`src/ui/FilmTapLayer.tsx`). Opening the resume pauses the take. Closing it leaves the take paused, and Space resumes it.
+In the Guided tour, Space and Esc work the same way. The letter keys K and R work there only while the tour controls have keyboard focus, so a stray letter cannot restart a visitor's tour. Keys pressed with Ctrl, Cmd, Alt, or Shift are ignored, and so are all shortcuts while the resume or the passport view is open. Clicking or tapping the world during a take also pauses and resumes it (`src/ui/FilmTapLayer.tsx`). Opening the resume pauses the take. Closing it leaves the take paused, and Space resumes it.
 
 For another take, press R and trim the start later, or reload the page to get the slate back. If the browser tab is hidden during a take, the take pauses and waits for Space. A take or tour opened in a background tab also waits, paused, until you press Space.
 
 ### What a take shows and hides
 
-A take shows the title, Annika's name and role line, a plain Read resume link, the four destination labels, the panel with the problem behind each mission, its progress, and the checkpoint cards, the passport row as progress, and the independent-project credit, followed where there is room by the sentence that says what the site demonstrates.
+A take shows the title, Annika's name and role line, a plain Read resume link, the four destination labels, the panel with the problem behind each mission, its progress, and the checkpoint cards, the passport row as progress, and, where there is room under it, the sentence that says what the site demonstrates.
 
 These are hidden or left out.
 
 - The tour controls: the chapter indicator, Pause, Restart, and Play it yourself. They come back while the take is paused, when one of them has keyboard focus, and when you click the world after the take has finished (`src/ui/TourBar.tsx`, `src/styles/hud.css`).
 - The Guided tour and Film mode buttons in the top bar.
 - Help in the panel: the objective, the how-to line, Back to map, the Continue button on cards, each card's full statement with the line under it, and the row that reopens cards at the end. Elements marked `film-hide` are switched off by one rule in `src/styles/layout.css`, and the panels leave out their buttons and their longer text while the timeline is in charge.
-- The passport view. The Passport button and the stamp spaces show progress during a take and cannot be pressed.
+- The passport view. The Passport button and the stamp spaces show progress during a take and cannot be pressed, and the passport does not open by itself at the end of a take.
 
 ### Frame sizes
 
@@ -359,11 +362,11 @@ To watch the rule at work, run `npm run dev` and open the browser console. `__NE
 
 **Example 1: hold the cards longer in the tour and Film mode.**
 
-1. Open `src/state/timeline.ts` and change `CARD_HOLD_MS` from `12500` to `13500`. All four cards use it, so the sequence grows by 4 seconds to 82.8 seconds.
-2. The Film slate works out its own number and now says "about 85 seconds". The intro's line is plain text, so open `src/content/content.ts` and change `tourNote` to `'Hands-free, about 85 seconds.'`.
+1. Open `src/state/timeline.ts` and change `CARD_HOLD_MS` from `12500` to `13500`. All four cards use it, so the sequence grows by 4 seconds to 79.3 seconds.
+2. The Film slate works out its own number and now says "about 80 seconds". The intro's line is plain text, so open `src/content/content.ts` and change `tourNote` to `'Hands-free, about 80 seconds.'`.
 3. Run `npx vitest run src/state/timeline.test.ts`, then `npm run check`.
 
-The timeline tests are the guard rails. The sequence must last 65 to 85 seconds, each card must stay up long enough to read what it shows during the sequence at 200 words a minute, and the number in `tourNote` must be within 5 seconds of the real length. Try `14500` to watch the first rule fail (the third fails with it), or `11900` to watch the second.
+The timeline tests are the guard rails. The sequence must last 65 to 85 seconds, each card must stay up long enough to read what it shows in a Film take at 200 words a minute, and the number in `tourNote` must be within 5 seconds of the real length. The opening has its own rule: `OPENING_HOLD_MS` must leave time to read the byline and the headline, and must not go back above 5 seconds. Try `15500` to watch the first rule fail (the third fails with it), or `11900` to watch the second.
 
 **Example 2, a little harder: give the Launch zone a different color.**
 
@@ -394,12 +397,12 @@ Here is what else to know.
 
 ### What was checked after the trail update
 
-Three rounds of changes were made after the handoff, all on 19 November 2026. The avatar got tan skin and long black hair. The site became a trail (four checkpoints, the Pitch Deck zone, stamps, the passport, the checkpoint cards, and the trail-complete ending). Then Annika removed the "Illustration only" lines and two lines under the statements, wrote the line under the Build statement, and asked for the "Hired!" sticker and for the avatar to dance with balloons in the middle of the island at the end. These are the checks made after those changes. They are narrower than the handoff checks in the next section.
+Five rounds of changes were made after the handoff, all on 19 November 2026. The avatar got tan skin and long black hair. The site became a trail (four checkpoints, the Pitch Deck zone, stamps, the passport, the checkpoint cards, and the trail-complete ending). Then Annika removed the "Illustration only" lines and two lines under the statements, wrote the line under the Build statement, and asked for the "Hired!" sticker and for the avatar to dance with balloons in the middle of the island at the end. Those three rounds were published that evening. In the fourth she asked for the Guided tour's cards to say the same as the cards in play, for the passport to open by itself at the end, and for the line beside the sticker in the passport to read "Applied". In the fifth she asked for the same "Applied" line on the ending, for a quicker opening of the Guided tour, and for the "Independent project" line to be removed everywhere on the site. These are the checks made after those changes. They are narrower than the handoff checks in the next section.
 
 **Automated checks**
 
-- `npm run check` passed after the last round: no type errors, 684 tests in 11 files, a clean build, and a clean `verify:dist`. It ran in a Linux sandbox with Node 22.23.5 and npm 10.9.9, not on Node 24. On the Mac with Node 24.22.3, `npm run check` last passed at setup, before these changes.
-- Built size: 1,311 kB in total, 388 kB gzipped. The page and its styles are 58 kB (13 kB gzipped), the interface script 285 kB (86 kB), the 3D file 927 kB (249 kB), and the font 39 kB.
+- `npm run check` passed after the last round: no type errors, 695 tests in 11 files, a clean build, and a clean `verify:dist`. It ran in a Linux sandbox with Node 22.23.5 and npm 10.9.9, not on Node 24. On the Mac with Node 24.22.3, `npm run check` last passed at setup, before these changes.
+- Built size: 1,310 kB in total, 388 kB gzipped. The page and its styles are 58 kB (13 kB gzipped), the interface script 286 kB (86 kB), the 3D file 927 kB (249 kB), and the font 39 kB.
 
 **In the browser, on the development server**
 
@@ -410,17 +413,32 @@ The site was looked at in the browser pane of the Claude desktop app, on `npm ru
 - A Film take was played through at 450 by 800 (9:16) and at 1280 by 720 (16:9). At 9:16 all four cards and the finale were looked at. At 16:9 the opening, three of the cards, and the finale were looked at. Each of them fit without scrolling. The finale also fit in a 390 by 844 Film window.
 - The console showed no errors during a play-through of two missions and a Replay.
 
-After the last round (the removed lines, the sticker, and the dance), these were looked at again, with every state reached through the development handle:
+After the third round (the removed lines, the sticker, and the dance), these were looked at again, with every state reached through the development handle:
 
 - At 1440 by 900: the ending, with the sticker on the Roblox space and the avatar in the middle of the pond holding three balloons. Two captures a moment apart showed two different poses, so the dance was moving. A close-up of the avatar and the balloons was looked at.
 - At 375 by 812 with phone emulation: the ending, the passport view with the sticker, a mission panel without its "Illustration only" line, and the Build card with its new line.
 - The last screen of a Film take at 450 by 800 and at 1280 by 720, reached by stepping the timeline by hand. It fit without scrolling in both.
 - The console showed no errors during a full play-through.
 
+After the third round was published, the landing screen of the public site was opened once and showed the new version. Nothing else was looked at there.
+
+After the fourth round, again through the development handle:
+
+- At 1440 by 900 in play: the passport view opened by itself 5.1 seconds after the ending appeared, with the keyboard focus inside it, the sticker, and the "Applied" line. The console showed no errors.
+- The Build card in the Guided tour at 1440 by 900, where the whole card fit, and at 375 by 812, where the statement starts below the first screenful and the sheet scrolls.
+
+After the fifth round, again through the development handle:
+
+- The Guided tour at 1440 by 900 took its first step 4.8 seconds after it started, world loading included.
+- The ending at 1440 by 900 and at 375 by 812, with "Applied" beside the sticker, and the passport view at 375 by 812.
+- No "Independent project" line was found in the text of the opening, a running Guided tour, the ending, the passport view, or a paused Film take, and none is in the built files.
+- On a phone-sized window the corner of the stage where that line used to sit is empty, and the controls of a paused Film take sit just above the passport row.
+
 **Not checked after the update**
 
 - The production build in a browser. Only the development server was looked at.
 - Real clicks or taps on the 3D objects of the other three zones, and any real tap on a phone-sized window.
+- The passport opening at the end of a Guided tour, and Escape closing it without ending the tour, in a real browser. Both are covered by the automated tests only.
 - Keyboard shortcuts, reduced motion, the no-WebGL notice, and printing, in a real browser. The automated tests cover them without WebGL. They do not cover the dance or the balloons, which exist only in the 3D scene: the still pose for reduced motion and the pause behind the resume were read in the code, not seen.
 - The avatar's walk from a checkpoint to the middle of the pond, as motion. Its route is tested, and its end was seen.
 - A Film take at 1920 by 1080 or 1080 by 1920 at full size, the measured timing of a take, and a real screen recording.
@@ -479,6 +497,8 @@ An independent review measured these on the production build. They were not repe
 - **The 3D code is the bulk of the download.** three.js and the world load as a separate file after the page is already readable (the `lazy` import in `src/App.tsx`). That file is roughly three quarters of the shipped bytes, and `npm run verify:dist` prints the current sizes.
 - **Without WebGL**, a short notice replaces the island and everything else works: the missions are playable from the panel buttons, and the tour, Film mode, and the resume behave the same. **Without JavaScript**, the page shows the full resume as plain HTML.
 - **No analytics, no cookies or browser storage, no backend, no environment variables, and no audio.** The built page requests only its own files. The one outside address is the LinkedIn link.
+- **A card in the Guided tour cannot be read in full without pausing.** It shows about twice the words its 12.5 seconds allow at 200 words a minute, and on a phone the statement starts below the first screenful. This is Annika's choice (see "Edit the content").
+- **The passport opens over whatever the visitor is doing.** Five seconds after the ending appears it takes the keyboard focus, also from someone who is reading the ending with a screen reader. It happens once, and Close or Escape returns to the ending.
 - **Progress is not saved.** Reloading the page starts again from the mode in the URL, with an empty passport.
 - **No QR code and no printed passport.** The Roblox Trails idea includes a physical, QR-coded passport. This site shows the passport on screen only.
 - **The camera is fixed.** There is no free roaming. On phone-sized windows the camera eases toward the active zone and back, and never in Film mode. On short phones it also eases the island smaller while a checkpoint card or the finale takes more of the screen, and it does the same for the last screen of a tall Film take.

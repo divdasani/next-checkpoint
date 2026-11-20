@@ -134,7 +134,7 @@ interface PassportDialogProps {
  */
 export function PassportDialog({ open, onClose }: PassportDialogProps) {
   const { state } = useGame()
-  const { trail, finale, credit } = content
+  const { trail, finale } = content
   const dialogRef = useRef<HTMLDialogElement>(null)
   const pressBeganOnBackdrop = useRef(false)
   const headingId = useId()
@@ -232,21 +232,26 @@ export function PassportDialog({ open, onClose }: PassportDialogProps) {
 
       <p className="passport-dialog__progress">{content.overview.progress(done)}</p>
 
-      {/* The space after the trail: where she hopes to go next. It is never stamped. */}
+      {/* The space after the trail: where she hopes to go next. It is never stamped. Until
+          the trail is complete the words say so. With the sticker on, they say she has applied. */}
       <div className="passport-dialog__next">
         <EmptyStamp size="m" sticker={sticker} />
         <div>
           <p className="passport-dialog__next-title">{finale.heading}</p>
-          <p className="note">
-            {trail.notStamped}. {sticker && <span className="visually-hidden">Sticker: {sticker} </span>}
-            {finale.applying}
-          </p>
+          {sticker ? (
+            <p className="note">
+              <span className="visually-hidden">Sticker: {sticker}. </span>
+              {finale.applied}
+            </p>
+          ) : (
+            <p className="note">
+              {trail.notStamped}. {finale.applying}
+            </p>
+          )}
         </div>
       </div>
 
-      <p className="note passport-dialog__credit">
-        {credit.line} {trail.demo}
-      </p>
+      <p className="note passport-dialog__demo">{trail.demo}</p>
     </dialog>
   )
 }

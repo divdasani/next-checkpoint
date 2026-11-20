@@ -55,6 +55,9 @@ export function useShortcuts(state: GameState, dispatch: Dispatch<GameAction>): 
       if (resumeOpen) return
       const target = event.target
       if (target instanceof Element) {
+        // An open dialog (the passport) handles its own keys too: Escape closes it and
+        // must not also end the tour behind it.
+        if (target.closest('dialog[open]')) return
         if (target.closest(TEXT_TARGETS)) return
         // A focused button or link keeps its normal Space and Enter behavior.
         if (isActivationKey(event) && target.closest(PRESSABLE_TARGETS)) return

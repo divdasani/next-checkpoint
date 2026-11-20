@@ -14,17 +14,23 @@ export interface TourStep {
 }
 
 /**
- * How long each checkpoint card stays up so it can be read on a recording. While the
- * sequence plays, a card shows its stamp, its headline numbers, and the skills it unlocks.
- * The longest one (Scale) is about 40 words, which takes about 12 seconds at an easy
- * 200 words per minute.
+ * How long each checkpoint card stays up so it can be read on a recording. In a Film take
+ * a card shows its stamp, its headline numbers, and the skills it unlocks. The longest one
+ * (Scale) is about 40 words, which takes about 12 seconds at an easy 200 words per minute.
+ *
+ * The Guided tour shows the full card, with the statement, for the same length of time.
+ * That is not long enough to read all of it. Annika chose this on 19 November 2026: the
+ * tour keeps its pace, and a visitor who wants to read every word presses Pause.
  */
 export const CARD_HOLD_MS = 12500
 /**
  * Opening hold on the unfinished world. The panel shows the trail's byline, the headline,
- * and what the site demonstrates: about 26 words, so about 8 seconds.
+ * and what the site demonstrates. The hold is long enough to read the byline and the
+ * headline (14 words, a little over 4 seconds), not all three lines. Annika asked for the
+ * quicker start on 19 November 2026: at 8 seconds the first screen looked as if nothing
+ * was happening.
  */
-export const OPENING_HOLD_MS = 8000
+export const OPENING_HOLD_MS = 4500
 /** Final hold on the finished trail before the sequence is marked done. The screen then stays up. */
 export const FINALE_HOLD_MS = 5500
 
